@@ -2958,6 +2958,7 @@ input, select, textarea {
 
 				.gallery a.landscape img {
 					height: 30vw;
+					object-fit: contain;
 				}
 
 			.gallery a.portrait img {
