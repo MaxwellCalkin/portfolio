@@ -1,31 +1,29 @@
-Paradigm Shift by HTML5 UP
-html5up.net | @ajlkn
-Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+# My Portfolio
+This is a website where you can see some of my recent projects, learn about my background, and get in touch with me.
 
+**Link to project:** http://MaxwellCalkin.com/
 
-Say hello to Paradigm Shift, my first addition to HTML5 UP in more than a year (!!!).
-Took things in a slightly different direction with this one, partly to mess with CSS
-grid (which this one relies on pretty heavily) but mostly to get back to making weirder
-and more experimental designs/layouts. Anyway, hope you dig it, and thanks for the
-continued support despite the lack of updates :)
+![alt tag](http://maxwellcalkin.com)
 
-Demo images* courtesy of Unsplash, a radtastic collection of CC0 (public domain) images
-you can use for pretty much whatever.
+## How It's Made:
 
-(* = not included)
+**Tech used:** HTML, CSS, JavaScript
 
-AJ
-aj@lkn.io | @ajlkn
+I had a lot of fun putting this website up!  
 
+## Optimizations
 
-Credits:
+There are a bunch of things I wish to implement to this site.  First of all, I'd like to add some parallax scrolling effects to modernize the feel a bit.  I also want to add more opportunity for interaction with different elements of the site to demonstrate my skill and engage potential clients further.
 
-	Demo Images:
-		Unsplash (unsplash.com)
+## Lessons Learned:
 
-	Icons:
-		Font Awesome (fontawesome.io)
+No matter what your experience level, being an engineer means continuously learning. Every time you build something you always have those *whoa this is awesome* or *fuck yeah I did it!* moments. This is where you should share those moments! Recruiters and interviewers love to see that you're self-aware and passionate about growing.
 
-	Other:
-		jQuery (jquery.com)
-		Responsive Tools (github.com/ajlkn/responsive-tools)
+## Examples:
+Take a look at these couple examples that I have in my own portfolio:
+
+**Palettable:** https://github.com/alecortega/palettable
+
+**Twitter Battle:** https://github.com/alecortega/twitter-battle
+
+**Patch Panel:** https://github.com/alecortega/patch-panel
