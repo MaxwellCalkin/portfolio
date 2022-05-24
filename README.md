@@ -46,7 +46,7 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
 <a target="_blank" href="#">To The Beat</a>
         <br />
         <a target="_blank" href="#">
-          <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif3.gif" width="100%" alt="Matching Card Game"/>
+          <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/biker.gif" width="100%" alt="To The Beat"/>
         </a>
     </td>
   </tr>
