@@ -1,8 +1,7 @@
 # Portfolio-2021 : <a target="_blank" href="https://www.maxwellcalkin.com">Visit Here</a>
 
 <a target="_blank" href="https://www.maxwellcalkin.com">
-<img src="portfolio.gif"></img>
-<img src="portfolio.gif" width="100%" alt="Portfolio"/>
+<img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/portfolio.png" width="100%" alt="Portfolio"/>
 </a>
 
 ### Portfolio Site including links to my projects and ways to get in contact with me.
