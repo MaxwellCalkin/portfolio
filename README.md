@@ -29,9 +29,9 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
   
   <tr>
     <td width="33.3%"  style="align:center;" valign="top">
-<a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">Elegant Website for your Business</a>
+<a target="_blank" href="https://salonbymaxwell.netlify.app">Elegant Website for your Business</a>
         <br />
-      <a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">
+      <a target="_blank" href="https://salonbymaxwell.netlify.app">
             <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/salon.gif" width="100%"  alt="Salon.com"/>
         </a>
     </td>
