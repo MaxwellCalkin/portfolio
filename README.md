@@ -29,23 +29,23 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
   
   <tr>
     <td width="33.3%"  style="align:center;" valign="top">
-<a target="_blank" href="https://salonbymaxwell.netlify.app">Elegant Website for your Business</a>
+<a target="_blank" href="https://github.com/MaxwellCalkin/salon">Elegant Website for your Business</a>
         <br />
-      <a target="_blank" href="https://salonbymaxwell.netlify.app">
+      <a target="_blank" href="https://github.com/MaxwellCalkin/salon">
             <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/salon.gif" width="100%"  alt="Salon.com"/>
         </a>
     </td>
     <td width="33.3%" valign="top">
-<a target="_blank" href="https://mlblineupsimulator.netlify.app/">MLB Lineup Simulator</a>
+<a target="_blank" href="https://github.com/MaxwellCalkin/MLBLineupSim">MLB Lineup Simulator</a>
       <br />
-        <a target="_blank" href="https://mlblineupsimulator.netlify.app/">
+        <a target="_blank" href="https://github.com/MaxwellCalkin/MLBLineupSim">
           <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/sox.gif" width="100%" alt="MLB Simulator"/>
         </a>
     </td>
     <td width="33.3%" valign="top">
-<a target="_blank" href="https://github.com/CharlesCreativeContent/matching-card-game">Matching Card Game</a>
+<a target="_blank" href="#">To The Beat</a>
         <br />
-        <a target="_blank" href="https://github.com/CharlesCreativeContent/matching-card-game">
+        <a target="_blank" href="#">
           <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif3.gif" width="100%" alt="Matching Card Game"/>
         </a>
     </td>
