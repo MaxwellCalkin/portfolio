@@ -2,7 +2,7 @@
 
 <a target="_blank" href="https://www.maxwellcalkin.com">
 <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/portfolio.gif"></img>
-<img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif4.gif" width="100%" alt="Portfolio"/>
+<img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/portfolio.gif" width="100%" alt="Portfolio"/>
 </a>
 
 ### Portfolio Site including links to my projects and ways to get in contact with me.
