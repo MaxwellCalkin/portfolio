@@ -1,7 +1,7 @@
 # Portfolio-2021 : <a target="_blank" href="https://www.maxwellcalkin.com">Visit Here</a>
 
 <a target="_blank" href="https://www.maxwellcalkin.com">
-<img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/portfolio.gif"></img>
+<img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/calkin.png"></img>
 <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/portfolio.gif" width="100%" alt="Portfolio"/>
 </a>
 
