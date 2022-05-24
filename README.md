@@ -29,10 +29,10 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
   
   <tr>
     <td width="33.3%"  style="align:center;" valign="top">
-<a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">Travelara.org</a>
+<a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">Elegant Website for your Business</a>
         <br />
       <a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">
-            <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif1.gif" width="100%"  alt="Travelara.org"/>
+            <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/salon.gif" width="100%"  alt="Salon.com"/>
         </a>
     </td>
     <td width="33.3%" valign="top">
