@@ -1,32 +1,53 @@
-# My Awesome Project
-.
+# Portfolio-2021 : <a target="_blank" href="https://www.maxwellcalkin.com">Visit Here</a>
 
-**Link to project:** http://maxwellcalkin.com/
+<a target="_blank" href="https://www.maxwellcalkin.com">
+<img source="/CharlesCreativeContent/CharlesCreativeContent/blob/main/images/gif4.gif?raw=true"></img>
+<img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif4.gif" width="100%" alt="Portfolio"/>
+</a>
 
-![alt tag](http://placecorgi.com/1200/650)
+### Portfolio Site including links to my projects and ways to get in contact with me.
 
-## How It's Made:
+## Tech used: ![HTML5 BADGE](https://img.shields.io/static/v1?label=|&message=HTML5&color=23555f&style=plastic&logo=html5)![CSS BADGE](https://img.shields.io/static/v1?label=|&message=CSS3&color=285f65&style=plastic&logo=css3)![JAVASCRIPT BADGE](https://img.shields.io/static/v1?label=|&message=JAVASCRIPT&color=3c7f5d&style=plastic&logo=javascript)
 
-**Tech used:** HTML, CSS, JavaScript
 
-Here's where you can go to town on how you actually built this thing. Write as much as you can here, it's totally fine if it's not too much just make sure you write *something*. If you don't have too much experience on your resume working on the front end that's totally fine. This is where you can really show off your passion and make up for that ten fold.
+My learning was focused on making a simple UI and a smooth UX, and have a seasonal animation for dark-mode. 
 
 ## Optimizations
 
-You don't have to include this section but interviewers *love* that you can not only deliver a final product that looks great but also functions efficiently. Did you write something then refactor it later and the result was 5x faster than the original implementation? Did you cache your assets? Things that you write in this section are **GREAT** to bring up in interviews and you can use this section as reference when studying for technical interviews!
+When I improve this project, I would start by updating the spring and summer amimation of rain and fireflies. Currrently have fall and winter finished just need to add the other too into the Date checker. Would also like to add some javascript to add gifs to front page.
 
 ## Lessons Learned:
 
-No matter what your experience level, being an engineer means continuously learning. Every time you build something you always have those *whoa this is awesome* or *fuck yeah I did it!* moments. This is where you should share those moments! Recruiters and interviewers love to see that you're self-aware and passionate about growing.
-
-## Examples:
-Take a look at these couple examples that I have in my own portfolio:
-
-**Palettable:** https://github.com/alecortega/palettable
-
-**Twitter Battle:** https://github.com/alecortega/twitter-battle
-
-**Patch Panel:** https://github.com/alecortega/patch-panel
+Seperation of Concerns. Realized how much easier it is to add css animations than to add custom javascript to change hover interactions
 
 
 
+
+## More Projects
+
+<table bordercolor="#66b2b2">
+  
+  <tr>
+    <td width="33.3%"  style="align:center;" valign="top">
+<a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">Travelara.org</a>
+        <br />
+      <a target="_blank" href="https://github.com/CharlesCreativeContent/lucid">
+            <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif1.gif" width="100%"  alt="Travelara.org"/>
+        </a>
+    </td>
+    <td width="33.3%" valign="top">
+<a target="_blank" href="https://github.com/CharlesCreativeContent/Rigley2-FlappyBug">Rigley2-"FlappyBug"</a>
+      <br />
+        <a target="_blank" href="https://github.com/CharlesCreativeContent/Rigley2-FlappyBug">
+          <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif2.gif" width="100%" alt="Rigley2-'FlappyBug'"/>
+        </a>
+    </td>
+    <td width="33.3%" valign="top">
+<a target="_blank" href="https://github.com/CharlesCreativeContent/matching-card-game">Matching Card Game</a>
+        <br />
+        <a target="_blank" href="https://github.com/CharlesCreativeContent/matching-card-game">
+          <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif3.gif" width="100%" alt="Matching Card Game"/>
+        </a>
+    </td>
+  </tr>
+</table>
