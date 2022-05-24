@@ -36,10 +36,10 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
         </a>
     </td>
     <td width="33.3%" valign="top">
-<a target="_blank" href="https://github.com/CharlesCreativeContent/Rigley2-FlappyBug">Rigley2-"FlappyBug"</a>
+<a target="_blank" href="https://mlblineupsimulator.netlify.app/">MLB Lineup Simulator</a>
       <br />
-        <a target="_blank" href="https://github.com/CharlesCreativeContent/Rigley2-FlappyBug">
-          <img src="https://github.com/CharlesCreativeContent/CharlesCreativeContent/raw/main/images/gif2.gif" width="100%" alt="Rigley2-'FlappyBug'"/>
+        <a target="_blank" href="https://mlblineupsimulator.netlify.app/">
+          <img src="https://github.com/MaxwellCalkin/MaxwellCalkin/blob/main/images/sox.gif" width="100%" alt="MLB Simulator"/>
         </a>
     </td>
     <td width="33.3%" valign="top">
