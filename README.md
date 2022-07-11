@@ -42,10 +42,10 @@ Seperation of Concerns. Realized how much easier it is to add css animations tha
         </a>
     </td>
     <td width="33.3%" valign="top">
-<a target="_blank" href="#">To The Beat</a>
+<a target="_blank" href="https://github.com/MaxwellCalkin/star-trek-full-stack">Star Trek Full Stack</a>
         <br />
         <a target="_blank" href="https://github.com/MaxwellCalkin/star-trek-full-stack">
-          <img src="https://thumbs.gfycat.com/EachPositiveAmericancurl-size_restricted.gif" width="100%" alt="To The Beat"/>
+          <img src="https://thumbs.gfycat.com/EachPositiveAmericancurl-size_restricted.gif" width="100%" alt="Star Trek App"/>
         </a>
     </td>
   </tr>
