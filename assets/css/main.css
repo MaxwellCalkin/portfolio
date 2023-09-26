@@ -3974,3 +3974,9 @@ body.is-ie #wrapper > section > .content > section {
   font-size: 2rem;
   border-bottom: none;
 }
+
+@media screen and (max-width: 600px) {
+  .content {
+    max-height: 50vh !important;
+  }
+}
