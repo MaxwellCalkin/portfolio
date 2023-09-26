@@ -3976,7 +3976,7 @@ body.is-ie #wrapper > section > .content > section {
 }
 
 @media screen and (max-width: 600px) {
-  .content {
+  .intro > .content {
     max-height: 50vh !important;
   }
 }
