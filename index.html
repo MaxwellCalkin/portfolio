@@ -1,536 +1,696 @@
-<!DOCTYPE HTML>
-<!--
-	Paradigm Shift by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
-	<head>
-		<title>Maxwell Calkin</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-		<meta name="description" content="" />
-		<meta name="keywords" content="" />
-		<link rel="shortcut icon" type="image/x-icon" href="images/logo4.ico" />
-		<link rel="stylesheet" href="assets/css/main.css" />
-	</head>
-	<body class="is-preload">
-		<nav id='myOwnNav'>
-			<ul id='myOwnUl' class = 'myOwnUl'>
-				<li>
-					<a href="#first">About</a>
-				</li>
-				<li>
-					<a href="#projects">Projects</a>
-				</li>
-				<li>
-					<a href="#hireNow">Hire Now</a>
-				</li>
-				<li>
-					<a href="#contact">Contact</a>
-				</li>
-			</ul>
-		</nav>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maxwell Calkin — In service of the unfolding</title>
+  <meta name="description" content="Maxwell Calkin — AI alignment researcher, builder, father. Building intelligence in service of the widening and deepening of consciousness." />
+  <meta name="theme-color" content="#06060c" />
 
-		<!-- Wrapper -->
-			<div id="wrapper">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Ambient grain overlay -->
+  <div class="grain" aria-hidden="true"></div>
 
-				<!-- Intro -->
-					<section class="intro">
-						<header>
-							<h1>Maxwell Calkin</h1>
-							<p>your next Software Engineer
-							</br>
-							creating full stack applications
-							</br>
-							to Uplift Humanity
-							</p>
-							<div class="social-icons">
-								<a href="https://www.LinkedIn.com/in/MaxwellCalkin" target="_blank">
-									<i class="fab fa-linkedin"></i>
-								</a>
-								<a href="https://www.GitHub.com/MaxwellCalkin" target="_blank">
-									<i class="fab fa-github"></i>
-								</a>
-								<a href="https://www.Twitter.com/MaxCalkin" target="_blank">
-									<i class="fab fa-twitter"></i>
-								</a>
-							</div>
-							<ul class="actions">
-								<li><a href="#first" class="arrow scrolly"><span class="label">Next</span></a></li>
-							</ul>
-						</header>
-						<div class="content">
-							<span class="image fill" data-position="top"><img src="images/maxSmile.png" alt="Maxwell's Headshot" /></span>
-						</div>
-					</section>
+  <!-- Scroll progress meter -->
+  <div class="scroll-progress" aria-hidden="true"><span id="scrollBar"></span></div>
 
-				<!-- Section -->
-					<section id="first">
-						<header>
-							<h2>Creative & Prolific</h2>
-						</header>
-						<div class="content">
-							<p><strong>Max Calkin has years of experience</strong> creating world class designs and products, working alongside diverse teams to help serve audiences of <strong>THREE MILLION PEOPLE.</strong></p>
-							<span class="image main"><img src="images/audience.jpg" alt="audience" /></span>
-						</div>
-					</section>
+  <!-- Custom cursor -->
+  <div class="cursor" aria-hidden="true">
+    <div class="cursor__dot"></div>
+    <div class="cursor__ring"></div>
+  </div>
 
-				<!-- Section -->
-					<section>
-						<header>
-							<h2>Skills for any application</h2>
-						</header>
-						<div class="content">
-							<p><strong>High competence</strong> in the broad range of skills needed to bring your company to the masses.</p>
-							<ul class="feature-icons">
-								<!-- <li class="icon solid fa-laptop">Consequat tempus</li> -->
-								<li class="icon solid fa-bolt">Urgent Response</li>
-								<li class="icon solid fa-signal">Growth Mechanics</li>
-								<!-- <li class="icon solid fa-cog">Blandit condimentum</li> -->
-								<li class="icon solid fa-code">State-of-the-Art Coding Practices</li>
-								<li class="icon solid fa-map-marker-alt">Here in New York, or Remote</li>
-							</ul>
-							<p>I will always use my skills to bring you and your clients the best possible experience, providing seamless connectivity while prioritizing simple functionality and meaningful style.</p>
-						</div>
-					</section>
+  <!-- Side rail: section progress -->
+  <aside class="rail" aria-hidden="true">
+    <a href="#hero" data-rail="hero"><span class="rail__tick"></span><em>00</em></a>
+    <a href="#credo" data-rail="credo"><span class="rail__tick"></span><em>01</em></a>
+    <a href="#mission" data-rail="mission"><span class="rail__tick"></span><em>02</em></a>
+    <a href="#consciousness" data-rail="consciousness"><span class="rail__tick"></span><em>03</em></a>
+    <a href="#journey" data-rail="journey"><span class="rail__tick"></span><em>04</em></a>
+    <a href="#pillars" data-rail="pillars"><span class="rail__tick"></span><em>05</em></a>
+    <a href="#constitution" data-rail="constitution"><span class="rail__tick"></span><em>06</em></a>
+    <a href="#connect" data-rail="connect"><span class="rail__tick"></span><em>07</em></a>
+  </aside>
 
-				<!-- Section -->
-					<section id='projects'>
-						<header>
-							<h2>See my work in action</h2>
-						</header>
-						<div class="content">
-							<p><strong>See real examples</strong> of static sites and full stack web applications I've developed. Make sure to check out my <a href="https://mcalkinmusic.wixsite.com/prak">tech blog called Prak.</a></p>
+  <!-- Top nav -->
+  <nav class="nav">
+    <a href="#hero" class="nav__mark">
+      <span class="nav__mark-glyph">M</span>
+      <span class="nav__mark-text">Maxwell Calkin</span>
+    </a>
+    <ul class="nav__links">
+      <li><a href="#mission">Mission</a></li>
+      <li><a href="#consciousness">Consciousness</a></li>
+      <li><a href="#journey">Journey</a></li>
+      <li><a href="#pillars">Pillars</a></li>
+      <li><a href="#constitution">Constitution</a></li>
+    </ul>
+    <a href="#connect" class="nav__cta">
+      <span>Connect</span>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    </a>
+  </nav>
 
-							<!--Section-->
-							<section>
-								<header>
-									<h3>We The People</h3>
-									<p><strong><a href="https://youtu.be/iwFWEjAApjc">Click here to see a video demo!</a></strong> or<br><strong><a href="https://github.com/MaxwellCalkin/weThePeople">Click here to see the GitHub repo</a></strong></br>The world's first social media app for expressing yourself through politics. We The People has a mission to force integrity and accountability into politics by showing Americans the truth of their leadership.<br>Use demo email: max@max.max<br>and demo password: maxmaxmax</p>
-								</header>
-								<div class="content">
-									<div class="gallery">
-										<!-- <a href="images/gallery/fulls/08.jpg" class="portrait"><img src="images/gallery/thumbs/08.jpg" alt="" /></a>
-										<a href="images/gallery/fulls/09.jpg" class="portrait"><img src="images/gallery/thumbs/09.jpg" alt="" /></a> -->
-										<a href="https://WeThePeople.cyclic.app" class="landscape"><img src="images/wtp.png" alt="WTP logo" /></a>
-									</div>
-								</div>
-							</section>
-							
-							
-							<!--Section-->
-							<section>
-								<header>
-									<h3>Sigma<br>finance dashboard</h3>
-									<p><strong>React, Typescript, Redux, Recharts, Material UI</strong> - All your company's financial data, beautifuly visualized. Visit the "Predictions" to see your data extrapolated out over the next twelve months using a basic machine learning techniue called linear regression!</p>
-								</header>
-								<div class="content">
-									<div class="gallery">
-										<!-- <a href="images/gallery/fulls/08.jpg" class="portrait"><img src="images/gallery/thumbs/08.jpg" alt="" /></a>
-										<a href="images/gallery/fulls/09.jpg" class="portrait"><img src="images/gallery/thumbs/09.jpg" alt="" /></a> -->
-										<a href="https://github.com/MaxwellCalkin/weThePeople" class="landscape"><img src="images/financeHUB.gif" alt="Sigma Finance Dashboard" /></a>
-									</div>
-								</div>
-							</section>
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" id="hero">
+    <canvas id="cosmos"></canvas>
+    <div class="hero__orbit" aria-hidden="true">
+      <div class="hero__orbit-ring hero__orbit-ring--1"></div>
+      <div class="hero__orbit-ring hero__orbit-ring--2"></div>
+      <div class="hero__orbit-ring hero__orbit-ring--3"></div>
+      <div class="hero__orbit-ring hero__orbit-ring--4"></div>
+    </div>
 
-							
-							<!--Section-->
-							<section>
-								<header>
-									<h3>Elegant Websites<br>for your Business</h3>
-									<p><strong>HTML5, CSS3, & Javascript</strong> - Dynamic, responsive websites for all types of businesses. Contact me to get started on your website and start engaging customers online!</p>
-								</header>
-								<div class="content">
-									<div class="gallery">
-										<a href="https://greennaturehomes.com" class="landscape"><img src="images/gnh.gif" alt="Green Nature Homes Preview" /></a>
-										<a href="https://salonbymaxwell.netlify.app" class="landscape"><img src="images/salon.gif" alt="Salon website" /></a>
-										<!-- <a href="images/gallery/fulls/07.jpg"><img src="images/gnh.gif" alt="" /></a> -->
-									</div>
-								</div>
-							</section>
-							
-							<!--Section-->
-							<section>
-								<header>
-									<h3>Vapor<br>videogame hub</h3>
-									<p><strong>React, Zustand, Typescript, & Node.JS</strong> - This Steam clone uses Typescript alongside advanced techniques in React to produce a smooth browsing experience copmlete with loading skeletons, caching from Tanstack's React Query, and global state management with Zustand (because Redux just isn't necessary).</p>
-								</header>
-								<div class="content">
-									<div class="gallery">
-										<a href="https://game-hub-phi-vert.vercel.app" class="landscape"><img src="images/gameHub.gif" alt="Game Hub Preview" /></a>
-										<!-- <a href="https://salonbymaxwell.netlify.app" class="landscape"><img src="images/salon.gif" alt="Salon website" /></a> -->
-										<!-- <a href="images/gallery/fulls/07.jpg"><img src="images/gnh.gif" alt="" /></a> -->
-									</div>
-								</div>
-							</section>
-							
-							<!-- Section -->
-								<section>
-									<header>
-										<h3>MLB Lineup Simulator</h3>
-										<p><strong>Javascript, CSS, HTML with MLB API Integration</strong> - Go head to head with a friend picking your favorite MLB stars! Whoever selects the nine best players WINS!</p>
-									</header>
-									<div class="content">
-										<div class="gallery">
-											<a href="https://mlblineupsimulator.netlify.app" class="landscape mlb"><img src="images/mlb.jpg" alt="MLB Logo" /></a>
-											<a href="https://mlblineupsimulator.netlify.app" class="landscape"><img src="images/sox.gif" alt="" /></a>
-										</div>
-									</div>
-								</section>
-							
+    <div class="hero__content">
+      <span class="eyebrow" data-reveal="1">
+        <span class="eyebrow__line"></span>
+        in service of the unfolding
+        <span class="eyebrow__line"></span>
+      </span>
 
-						</div>
-					</section>
+      <h1 class="hero__name" aria-label="Maxwell Calkin">
+        <span class="hero__word" data-reveal="2">
+          <span>M</span><span>a</span><span>x</span><span>w</span><span>e</span><span>l</span><span>l</span>
+        </span>
+        <span class="hero__word hero__word--italic" data-reveal="3">
+          <span>C</span><span>a</span><span>l</span><span>k</span><span>i</span><span>n</span>
+        </span>
+      </h1>
 
-				<!-- Section -->
-					<section id='hireNow'>
-						<header>
-							<h2>Ready to hire?</h2>
-						</header>
-						<div class="content">
-							<p><strong>I am the developer you need.</strong> I am actively seeking opportunities to build websites and other software for small businesses and global brands, so connect today via email, or go to my resume to see my work history.  </p>
-							<ul class="actions">
-								<li><a href="#contact" class="button primary large">Hire Now</a></li>
-								<li><a href="https://drive.google.com/file/d/1mKSpB5BF3WL2sRF8xJXG5EK8S-6YNZb3/view?usp=drive_link" class="button large">Resume</a></li>
-							</ul>
-						</div>
-					</section>
+      <p class="hero__tagline" data-reveal="4">
+        Building intelligence in service of the <em>widening</em> and <em>deepening</em> of what is genuinely life-giving.
+      </p>
 
-				<!-- Elements -->
-				<!--
-					<section>
-						<header>
-							<h2>Elements</h2>
-						</header>
-						<div class="content">
+      <div class="hero__meta" data-reveal="5">
+        <div class="hero__meta-row">
+          <span class="dot"></span>
+          <span class="hero__meta-label">Now</span>
+          <span class="hero__meta-value">Software engineer · Interactive Aptitude · building toward an AI safety lab</span>
+        </div>
+        <div class="hero__meta-row">
+          <span class="dot"></span>
+          <span class="hero__meta-label">Before</span>
+          <span class="hero__meta-value">Touring bassist (Radio City, Broadway, millions of listeners)</span>
+        </div>
+        <div class="hero__meta-row">
+          <span class="dot"></span>
+          <span class="hero__meta-label">Always</span>
+          <span class="hero__meta-value">Husband to Emily · Father to Olive &amp; Blossom</span>
+        </div>
+      </div>
+    </div>
 
-							<section>
-								<header>
-									<h3>Text</h3>
-								</header>
-								<div class="content">
-									<p>This is <b>bold</b> and this is <strong>strong</strong>. This is <i>italic</i> and this is <em>emphasized</em>.
-									This is <sup>superscript</sup> text and this is <sub>subscript</sub> text.
-									This is <u>underlined</u> and this is code: <code>for (;;) { ... }</code>. Finally, <a href="#">this is a link</a>.</p>
-									<hr />
-									<h2>Heading Level 2</h2>
-									<h3>Heading Level 3</h3>
-									<h4>Heading Level 4</h4>
-									<h5>Heading Level 5</h5>
-									<hr />
-									<h5>Blockquote</h5>
-									<blockquote>Fringilla nisl. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan faucibus. Vestibulum ante ipsum primis in faucibus lorem ipsum dolor sit amet nullam adipiscing eu felis.</blockquote>
-									<h5>Preformatted</h5>
-									<pre><code>i = 0;
+    <div class="hero__scroll" data-reveal="6">
+      <span>scroll</span>
+      <div class="hero__scroll-line"></div>
+    </div>
 
-while (!deck.isInOrder()) {
-  print 'Iteration ' + i;
-  deck.shuffle();
-  i++;
-}
+    <div class="hero__corner hero__corner--tl">
+      <span>42.7°N</span>
+      <span>73.9°W</span>
+    </div>
+    <div class="hero__corner hero__corner--tr">
+      <span>MMXXVI</span>
+    </div>
+    <div class="hero__corner hero__corner--bl">
+      <span>v · iv</span>
+      <span>article I / §1</span>
+    </div>
+    <div class="hero__corner hero__corner--br">
+      <span>LIVE LIFE BEST</span>
+    </div>
+  </section>
 
-print 'Sorted in ' + i + ' iterations.';</code></pre>
-								</div>
-							</section>
+  <!-- ===================== CREDO / QUOTE ===================== -->
+  <section class="credo" id="credo">
+    <div class="credo__inner">
+      <span class="section-tag"><em>01</em> · credo</span>
 
-							<section>
-								<header>
-									<h3>Lists</h3>
-								</header>
-								<div class="content">
+      <blockquote class="credo__quote">
+        <p data-split>
+          I hold that a life is good to the degree that it
+          <em>generates</em> and <em>propagates</em> goodness —
+          within the self, within the family, within the community,
+          within humanity, <span class="accent">and within the universe.</span>
+        </p>
+        <cite>
+          <span class="cite__rule"></span>
+          from a personal constitution
+        </cite>
+      </blockquote>
 
-									<h4>Unordered</h4>
-									<ul>
-										<li>Dolor pulvinar etiam.</li>
-										<li>Sagittis adipiscing.</li>
-										<li>Felis enim feugiat.</li>
-									</ul>
+      <div class="credo__aside">
+        <p>
+          This site is a public record of how I am trying to live. It is organized
+          around a single conviction — that <strong>consciousness matters</strong>,
+          and that the most consequential thing a life can do is help it
+          widen, deepen, and awaken.
+        </p>
+      </div>
+    </div>
+  </section>
 
-									<h4>Alternate</h4>
-									<ul class="alt">
-										<li>Dolor pulvinar etiam.</li>
-										<li>Sagittis adipiscing.</li>
-										<li>Felis enim feugiat.</li>
-									</ul>
+  <!-- ===================== MISSION: AI ALIGNMENT ===================== -->
+  <section class="mission" id="mission">
+    <div class="mission__header">
+      <span class="section-tag"><em>02</em> · the work</span>
+      <h2 class="display">
+        <span>Aligning</span>
+        <span>artificial intelligence</span>
+        <span class="display--italic">with the good.</span>
+      </h2>
+    </div>
 
-									<h4>Ordered</h4>
-									<ol>
-										<li>Dolor pulvinar etiam.</li>
-										<li>Etiam vel felis viverra.</li>
-										<li>Felis enim feugiat.</li>
-										<li>Dolor pulvinar etiam.</li>
-										<li>Etiam vel felis lorem.</li>
-										<li>Felis enim et feugiat.</li>
-									</ol>
-									<h4>Icons</h4>
-									<ul class="icons">
-										<li><a href="#" class="icon brands fa-twitter"><span class="label">Twitter</span></a></li>
-										<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-										<li><a href="#" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
-										<li><a href="#" class="icon brands fa-github"><span class="label">Github</span></a></li>
-									</ul>
+    <div class="mission__body">
+      <div class="mission__text">
+        <p class="lede">
+          The most consequential problem of our century is not whether
+          intelligence will scale — it will — but whether the intelligence
+          we unleash will be <em>wise</em>.
+        </p>
 
-									<h4>Actions</h4>
-									<ul class="actions">
-										<li><a href="#" class="button primary">Default</a></li>
-										<li><a href="#" class="button">Default</a></li>
-									</ul>
-									<ul class="actions stacked">
-										<li><a href="#" class="button primary">Default</a></li>
-										<li><a href="#" class="button">Default</a></li>
-									</ul>
-								</div>
-							</section>
+        <p>
+          My life's work is to ensure that as artificial minds grow in
+          capability, they also grow in alignment with the deepest good
+          available to us: <strong>not merely convenience, not merely
+          profit, not merely obedience</strong>, but the widening and deepening
+          of what is genuinely life-giving.
+        </p>
 
-							<section>
-								<header>
-									<h3>Table</h3>
-								</header>
-								<div class="content">
-									<h4>Default</h4>
-									<div class="table-wrapper">
-										<table>
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Description</th>
-													<th>Price</th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr>
-													<td>Item One</td>
-													<td>Ante turpis integer aliquet porttitor.</td>
-													<td>29.99</td>
-												</tr>
-												<tr>
-													<td>Item Two</td>
-													<td>Vis ac commodo adipiscing arcu aliquet.</td>
-													<td>19.99</td>
-												</tr>
-												<tr>
-													<td>Item Three</td>
-													<td> Morbi faucibus arcu accumsan lorem.</td>
-													<td>29.99</td>
-												</tr>
-												<tr>
-													<td>Item Four</td>
-													<td>Vitae integer tempus condimentum.</td>
-													<td>19.99</td>
-												</tr>
-												<tr>
-													<td>Item Five</td>
-													<td>Ante turpis integer aliquet porttitor.</td>
-													<td>29.99</td>
-												</tr>
-											</tbody>
-											<tfoot>
-												<tr>
-													<td colspan="2"></td>
-													<td>100.00</td>
-												</tr>
-											</tfoot>
-										</table>
-									</div>
+        <p>
+          Intelligence, wherever it emerges, must be shaped toward wisdom —
+          not only power. That is the work. That is the lab I am building toward.
+        </p>
 
-									<h4>Alternate</h4>
-									<div class="table-wrapper">
-										<table class="alt">
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Description</th>
-													<th>Price</th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr>
-													<td>Item One</td>
-													<td>Ante turpis integer aliquet porttitor.</td>
-													<td>29.99</td>
-												</tr>
-												<tr>
-													<td>Item Two</td>
-													<td>Vis ac commodo adipiscing arcu aliquet.</td>
-													<td>19.99</td>
-												</tr>
-												<tr>
-													<td>Item Three</td>
-													<td> Morbi faucibus arcu accumsan lorem.</td>
-													<td>29.99</td>
-												</tr>
-												<tr>
-													<td>Item Four</td>
-													<td>Vitae integer tempus condimentum.</td>
-													<td>19.99</td>
-												</tr>
-												<tr>
-													<td>Item Five</td>
-													<td>Ante turpis integer aliquet porttitor.</td>
-													<td>29.99</td>
-												</tr>
-											</tbody>
-											<tfoot>
-												<tr>
-													<td colspan="2"></td>
-													<td>100.00</td>
-												</tr>
-											</tfoot>
-										</table>
-									</div>
-								</div>
-							</section>
+        <ul class="mission__tenets">
+          <li>
+            <span class="tenet__num">i.</span>
+            <span><strong>Capability without alignment is a hazard.</strong> The first duty of any serious AI program is to ensure that its outputs remain oriented toward the good, at every level of capability.</span>
+          </li>
+          <li>
+            <span class="tenet__num">ii.</span>
+            <span><strong>Alignment is not obedience.</strong> A perfectly compliant system is not a safe one. The target is wisdom, not servility.</span>
+          </li>
+          <li>
+            <span class="tenet__num">iii.</span>
+            <span><strong>Depth over speed.</strong> The race to intelligence is real, but the race to <em>aligned</em> intelligence is the only one that matters.</span>
+          </li>
+          <li>
+            <span class="tenet__num">iv.</span>
+            <span><strong>Refuse the machines of dehumanization.</strong> I will not give my talent lightly to systems that addict, diminish, manipulate, or spiritually flatten human beings.</span>
+          </li>
+        </ul>
+      </div>
 
-							<section>
-								<header>
-									<h3>Buttons</h3>
-								</header>
-								<div class="content">
-									<ul class="actions">
-										<li><a href="#" class="button primary">Primary</a></li>
-										<li><a href="#" class="button">Default</a></li>
-									</ul>
-									<ul class="actions">
-										<li><a href="#" class="button large">Large</a></li>
-										<li><a href="#" class="button">Default</a></li>
-										<li><a href="#" class="button small">Small</a></li>
-									</ul>
-									<ul class="actions">
-										<li><a href="#" class="button primary icon solid fa-download">Icon</a></li>
-										<li><a href="#" class="button icon solid fa-download">Icon</a></li>
-									</ul>
-									<ul class="actions">
-										<li><span class="button primary disabled">Disabled</span></li>
-										<li><span class="button disabled">Disabled</span></li>
-									</ul>
-								</div>
-							</section>
+      <!-- INTERACTIVE: CAPABILITY × ALIGNMENT -->
+      <aside class="mission__viz" aria-label="Capability and alignment interactive visualization">
+        <div class="viz__header">
+          <span class="mono">fig.02</span>
+          <span class="viz__title">capability × alignment</span>
+        </div>
 
-							<section>
-								<header>
-									<h3>Form</h3>
-								</header>
-								<div class="content">
-									<form method="post" action="#">
-										<div class="fields">
-											<div class="field half">
-												<label for="demo-name">Name</label>
-												<input type="text" name="demo-name" id="demo-name" value="" placeholder="Jane Doe" />
-											</div>
-											<div class="field half">
-												<label for="demo-email">Email</label>
-												<input type="email" name="demo-email" id="demo-email" value="" placeholder="jane@untitled.tld" />
-											</div>
-											<div class="field">
-												<label for="demo-category">Category</label>
-												<select name="demo-category" id="demo-category">
-													<option value="">-</option>
-													<option value="1">Manufacturing</option>
-													<option value="1">Shipping</option>
-													<option value="1">Administration</option>
-													<option value="1">Human Resources</option>
-												</select>
-											</div>
-											<div class="field half">
-												<input type="radio" id="demo-priority-low" name="demo-priority" checked>
-												<label for="demo-priority-low">Low</label>
-											</div>
-											<div class="field half">
-												<input type="radio" id="demo-priority-high" name="demo-priority">
-												<label for="demo-priority-high">High</label>
-											</div>
-											<div class="field half">
-												<input type="checkbox" id="demo-copy" name="demo-copy">
-												<label for="demo-copy">Email me a copy</label>
-											</div>
-											<div class="field half">
-												<input type="checkbox" id="demo-human" name="demo-human" checked>
-												<label for="demo-human">Not a robot</label>
-											</div>
-											<div class="field">
-												<label for="demo-message">Message</label>
-												<textarea name="demo-message" id="demo-message" placeholder="Enter your message" rows="6"></textarea>
-											</div>
-										</div>
-										<ul class="actions">
-											<li><input type="submit" value="Send Message" class="primary" /></li>
-											<li><input type="reset" value="Reset" /></li>
-										</ul>
-									</form>
-								</div>
-							</section>
+        <div class="viz__canvas" id="viz-alignment">
+          <svg viewBox="0 0 320 320" class="viz__grid" aria-hidden="true">
+            <defs>
+              <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.2"/>
+              </pattern>
+              <linearGradient id="idealLine" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#e6a25c" stop-opacity="0.2"/>
+                <stop offset="50%" stop-color="#f4c971" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#f8d998" stop-opacity="1"/>
+              </linearGradient>
+            </defs>
+            <rect width="320" height="320" fill="url(#grid)"/>
+            <line x1="20" y1="300" x2="300" y2="300" stroke="currentColor" opacity="0.4" stroke-width="0.6"/>
+            <line x1="20" y1="300" x2="20" y2="20" stroke="currentColor" opacity="0.4" stroke-width="0.6"/>
+            <!-- Ideal alignment diagonal: capability == alignment -->
+            <line x1="20" y1="300" x2="300" y2="20" stroke="url(#idealLine)" stroke-width="1.2" stroke-dasharray="3 3"/>
+            <text x="300" y="314" text-anchor="end" class="viz__axis">capability →</text>
+            <text x="14" y="20" transform="rotate(-90 14 20)" text-anchor="end" class="viz__axis">alignment →</text>
+            <text x="285" y="42" text-anchor="end" class="viz__axis viz__axis--diag">ideal &nbsp;y&nbsp;=&nbsp;x</text>
+          </svg>
+          <div class="viz__orb" id="orbGood"></div>
+          <div class="viz__drop" id="orbLine"></div>
+        </div>
 
-						</div>
-					</section>
-				-->
+        <div class="viz__controls">
+          <label class="slider">
+            <span class="slider__label">capability</span>
+            <input type="range" id="capSlider" min="0" max="100" value="62" />
+            <span class="slider__value" id="capValue">0.62</span>
+          </label>
+          <label class="slider">
+            <span class="slider__label">alignment</span>
+            <input type="range" id="alignSlider" min="0" max="100" value="38" />
+            <span class="slider__value" id="alignValue">0.38</span>
+          </label>
+          <div class="viz__readout" id="vizReadout">
+            <span class="viz__readout-label">state</span>
+            <span class="viz__readout-value" id="vizState">capable &amp; drifting</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
 
-				<!-- Section -->
-					<section id='contact'>
-						<header>
-							<h2>Get in touch</h2>
-						</header>
-						<div class="content">
-							<p><strong>Contact me</strong> to get started on your website today. If you want to get to know me even better, feel free to check out my socials on the left. Let's create something great!</p>
-							<form>
-								<div class="fields">
-									<div class="field half">
-										<input type="text" name="name" id="name" placeholder="Name" />
-									</div>
-									<div class="field half">
-										<input type="email" name="email" id="email" placeholder="Email" />
-									</div>
-									<div class="field">
-										<textarea name="message" id="message" placeholder="Message" rows="7"></textarea>
-									</div>
-								</div>
-								<ul class="actions">
-									<li><input type="submit" value="Send Message" class="button primary" /></li>
-								</ul>
-							</form>
-						</div>
-						<footer>
-							<ul class="items">
-								<li>
-									<h3>Email</h3>
-									<a href="#">MaxwellCalkin@Gmail.com</a>
-								</li>
-								<li>
-									<h3>Phone</h3>
-									<a href="#">(603) 486-7271</a>
-								</li>
-								<!-- <li>
-									<h3>Address</h3>
-									<span>320 New York Ave, Brooklyn, NY 11213</span>
-								</li> -->
-								<li>
-									<h3>Connect online</h3>
-									<ul class="icons">
-										<li><a href="https://twitter.com/MaxCalkin" class="icon brands fa-twitter"><span class="label">Twitter</span></a></li>
-										<li><a href="https://www.linkedin.com/in/maxwellcalkin/" class="icon brands fa-linkedin-in"><span class="label">LinkedIn</span></a></li>
-										<li><a href="https://www.github.com/maxwellcalkin" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
-									</ul>
-								</li>
-							</ul>
-						</footer>
-					</section>
+  <!-- ===================== CONSCIOUSNESS / DEPTH × SPAN ===================== -->
+  <section class="consciousness" id="consciousness">
+    <div class="cons__header">
+      <span class="section-tag"><em>03</em> · the frame</span>
+      <h2 class="display">
+        <span>Depth</span>
+        <span class="cons__times">×</span>
+        <span class="display--italic">Span</span>
+      </h2>
+      <p class="cons__subtitle">
+        After Ken Wilber: every <em>holon</em> — every whole that is also a part —
+        has two measures. The height of what it contains within. The reach of
+        what it connects to outside.
+      </p>
+    </div>
 
-				<!-- Copyright -->
-					<div class="copyright">&copy; Maxwell Calkin. All rights reserved.</a>.</div>
+    <div class="cons__body">
+      <div class="cons__viz" id="consViz" aria-hidden="true">
+        <div class="holon holon--1"><span>atom</span></div>
+        <div class="holon holon--2"><span>molecule</span></div>
+        <div class="holon holon--3"><span>cell</span></div>
+        <div class="holon holon--4"><span>organism</span></div>
+        <div class="holon holon--5"><span>mind</span></div>
+        <div class="holon holon--6"><span>culture</span></div>
+        <div class="holon holon--7"><span>kosmos</span></div>
+        <div class="holon__center">
+          <span class="holon__label">holon</span>
+          <span class="holon__hint">hover to trace</span>
+        </div>
+      </div>
 
-			</div>
+      <div class="cons__prose">
+        <p>
+          A good life, on this view, is one that <strong>pulls consciousness
+          upward</strong> — toward greater depth of interior experience — and
+          <strong>outward</strong> — toward wider circles of care, capability, and connection.
+        </p>
+        <p>
+          Two paths carry me there: <em>raising children well</em>, and
+          <em>helping to build intelligence that extends</em> — rather than
+          flattens — what it means to be aware.
+        </p>
+        <p>
+          Everything on this page is a consequence of taking that frame seriously.
+        </p>
+        <dl class="cons__dl">
+          <div><dt>Depth</dt><dd>The vertical axis — interior richness, integration, wisdom.</dd></div>
+          <div><dt>Span</dt><dd>The horizontal axis — reach, inclusion, capability, care.</dd></div>
+          <div><dt>Holon</dt><dd>A whole that is also a part. Every thing you love is one.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
 
-		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
-			<script src="assets/js/jquery.scrolly.min.js"></script>
-			<script src="assets/js/browser.min.js"></script>
-			<script src="assets/js/breakpoints.min.js"></script>
-			<script src="assets/js/util.js"></script>
-			<script src="assets/js/main.js"></script>
+  <!-- ===================== JOURNEY ===================== -->
+  <section class="journey" id="journey">
+    <div class="journey__header">
+      <span class="section-tag"><em>04</em> · the arc</span>
+      <h2 class="display">
+        <span>Stages.</span>
+        <span>Screens.</span>
+        <span class="display--italic">Systems.</span>
+      </h2>
+      <p class="journey__subtitle">
+        Three chapters. Each one chased a harder game than the last.
+      </p>
+    </div>
 
-	</body>
+    <ol class="journey__list">
+      <li class="chapter chapter--music">
+        <div class="chapter__marker">
+          <span class="chapter__num">I</span>
+          <span class="chapter__years">2015 — 2020</span>
+        </div>
+        <div class="chapter__body">
+          <h3 class="chapter__title"><em>The</em> Bass <em>Years</em></h3>
+          <p class="chapter__lede">
+            I was, for a window, the best electric bass player in the world.
+          </p>
+          <p>
+            Radio City many times over. Broadway pits. Elite orchestras.
+            Legendary studios with legendary musicians. Music for tens of
+            thousands of people in a single night; for millions over a career.
+          </p>
+          <p class="chapter__close">
+            <em>And I hit a ceiling.</em> Being the best in the world at
+            something too easy is still not enough. The game was uncontested.
+          </p>
+          <ul class="chapter__chips">
+            <li>Radio City Music Hall</li>
+            <li>Broadway</li>
+            <li>Elite orchestras</li>
+            <li>Legendary studios</li>
+          </ul>
+        </div>
+        <div class="chapter__glyph chapter__glyph--strings" aria-hidden="true">
+          <svg viewBox="0 0 200 200" fill="none">
+            <line x1="20" y1="20" x2="20" y2="180" stroke="currentColor" stroke-width="0.6"/>
+            <line x1="80" y1="20" x2="80" y2="180" stroke="currentColor" stroke-width="1"/>
+            <line x1="140" y1="20" x2="140" y2="180" stroke="currentColor" stroke-width="1.6"/>
+            <line x1="180" y1="20" x2="180" y2="180" stroke="currentColor" stroke-width="2.4"/>
+            <line x1="0" y1="60" x2="200" y2="60" stroke="currentColor" opacity="0.4" stroke-width="0.4"/>
+            <line x1="0" y1="100" x2="200" y2="100" stroke="currentColor" opacity="0.4" stroke-width="0.4"/>
+            <line x1="0" y1="140" x2="200" y2="140" stroke="currentColor" opacity="0.4" stroke-width="0.4"/>
+          </svg>
+        </div>
+      </li>
+
+      <li class="chapter chapter--games">
+        <div class="chapter__marker">
+          <span class="chapter__num">II</span>
+          <span class="chapter__years">the game years</span>
+        </div>
+        <div class="chapter__body">
+          <h3 class="chapter__title"><em>The</em> Arena <em>Years</em></h3>
+          <p class="chapter__lede">
+            Contested games. High ranks. League. Valorant. Fortnite.
+          </p>
+          <p>
+            I stepped into fields with millions of competitors and climbed.
+            I tried the professional lifestyle. It was awesome and it was
+            hollow — I was playing great games all day and sinking anyway.
+          </p>
+          <p class="chapter__close">
+            <em>The lesson:</em> stimulation is not aliveness. I needed to
+            <span class="accent">move my body</span> and <span class="accent">contribute to the universe</span>.
+            Not optional. Foundational.
+          </p>
+          <ul class="chapter__chips">
+            <li>League of Legends</li>
+            <li>Valorant</li>
+            <li>Fortnite</li>
+            <li>Hard-contested</li>
+          </ul>
+        </div>
+        <div class="chapter__glyph chapter__glyph--crosshair" aria-hidden="true">
+          <svg viewBox="0 0 200 200" fill="none">
+            <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.6"/>
+            <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.6"/>
+            <circle cx="100" cy="100" r="4" fill="currentColor"/>
+            <line x1="100" y1="0" x2="100" y2="40" stroke="currentColor" stroke-width="0.6"/>
+            <line x1="100" y1="160" x2="100" y2="200" stroke="currentColor" stroke-width="0.6"/>
+            <line x1="0" y1="100" x2="40" y2="100" stroke="currentColor" stroke-width="0.6"/>
+            <line x1="160" y1="100" x2="200" y2="100" stroke="currentColor" stroke-width="0.6"/>
+          </svg>
+        </div>
+      </li>
+
+      <li class="chapter chapter--build">
+        <div class="chapter__marker">
+          <span class="chapter__num">III</span>
+          <span class="chapter__years">now →</span>
+        </div>
+        <div class="chapter__body">
+          <h3 class="chapter__title"><em>The</em> Build <em>Years</em></h3>
+          <p class="chapter__lede">
+            Software. Machine learning. AI safety. Family.
+          </p>
+          <p>
+            A day job shipping real systems at <span class="accent">Interactive
+            Aptitude</span> — a DoD contractor funded by SBIR grants.
+            Two daughters at home. A fiancée who is the center of it.
+            A clear line toward the lab I am preparing to found.
+          </p>
+          <p class="chapter__close">
+            <em>The real game.</em> The one where stakes are high, the path is
+            hard, the contribution is measurable, and the work compounds
+            across generations. <strong>I am ready enough to begin.</strong>
+          </p>
+          <ul class="chapter__chips">
+            <li>Python · TypeScript · PyTorch</li>
+            <li>DoD / SBIR</li>
+            <li>AI safety R&amp;D</li>
+            <li>Founder-track</li>
+          </ul>
+        </div>
+        <div class="chapter__glyph chapter__glyph--neural" aria-hidden="true">
+          <svg viewBox="0 0 200 200" fill="none">
+            <g stroke="currentColor" stroke-width="0.5" opacity="0.9">
+              <line x1="20" y1="40" x2="100" y2="60"/>
+              <line x1="20" y1="40" x2="100" y2="100"/>
+              <line x1="20" y1="100" x2="100" y2="60"/>
+              <line x1="20" y1="100" x2="100" y2="100"/>
+              <line x1="20" y1="100" x2="100" y2="140"/>
+              <line x1="20" y1="160" x2="100" y2="100"/>
+              <line x1="20" y1="160" x2="100" y2="140"/>
+              <line x1="100" y1="60" x2="180" y2="100"/>
+              <line x1="100" y1="100" x2="180" y2="100"/>
+              <line x1="100" y1="140" x2="180" y2="100"/>
+            </g>
+            <g fill="currentColor">
+              <circle cx="20" cy="40" r="3"/>
+              <circle cx="20" cy="100" r="3"/>
+              <circle cx="20" cy="160" r="3"/>
+              <circle cx="100" cy="60" r="3"/>
+              <circle cx="100" cy="100" r="3"/>
+              <circle cx="100" cy="140" r="3"/>
+              <circle cx="180" cy="100" r="4" fill="var(--flame)"/>
+            </g>
+          </svg>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ===================== PILLARS ===================== -->
+  <section class="pillars" id="pillars">
+    <div class="pillars__header">
+      <span class="section-tag"><em>05</em> · the pillars</span>
+      <h2 class="display">
+        <span>Three</span>
+        <span class="display--italic">pillars</span>
+        <span>under one aim.</span>
+      </h2>
+      <p class="pillars__subtitle">
+        Underneath the umbrella of <em>live life best</em>.
+      </p>
+    </div>
+
+    <div class="pillars__grid">
+      <article class="pillar pillar--health">
+        <div class="pillar__chrome">
+          <span class="pillar__num">i.</span>
+          <span class="pillar__greek">ὑγίεια</span>
+        </div>
+        <h3 class="pillar__name">Health</h3>
+        <p class="pillar__tag">the foundation</p>
+        <p class="pillar__text">
+          I can't contribute to the evolution of consciousness if I'm dead.
+          I honor sleep, strength, movement, sunlight, nourishment, and
+          emotional steadiness as <em>essential duties — not optional luxuries</em>.
+          My body is an instrument of service, not an ornament.
+        </p>
+        <div class="pillar__meter" data-value="88">
+          <span class="pillar__meter-label">trained habit</span>
+          <div class="pillar__meter-bar"><span></span></div>
+        </div>
+      </article>
+
+      <article class="pillar pillar--family">
+        <div class="pillar__chrome">
+          <span class="pillar__num">ii.</span>
+          <span class="pillar__greek">ἀγάπη</span>
+        </div>
+        <h3 class="pillar__name">Family</h3>
+        <p class="pillar__tag">the center</p>
+        <p class="pillar__text">
+          Emily. Olive. Blossom. The atmosphere of my home forms nervous
+          systems toward safety, bodies toward health, minds toward curiosity,
+          souls toward wonder. No outer victory compensates for inner betrayal
+          at home.
+        </p>
+        <ul class="pillar__family">
+          <li><span class="pillar__relation">fiancée</span><span class="pillar__person">Emily</span></li>
+          <li><span class="pillar__relation">daughter</span><span class="pillar__person">Olive</span></li>
+          <li><span class="pillar__relation">daughter</span><span class="pillar__person">Blossom</span></li>
+        </ul>
+      </article>
+
+      <article class="pillar pillar--mission">
+        <div class="pillar__chrome">
+          <span class="pillar__num">iii.</span>
+          <span class="pillar__greek">τέλος</span>
+        </div>
+        <h3 class="pillar__name">Mission</h3>
+        <p class="pillar__tag">the fire</p>
+        <p class="pillar__text">
+          Hard, meaningful work worthy of my gifts. Missions that serve
+          humanity, advance truth, and help guide powerful technologies
+          toward what is genuinely good. An AI safety lab is the current
+          horizon. <em>I will not waste my best years on trivial things.</em>
+        </p>
+        <div class="pillar__horizon">
+          <span>horizon</span>
+          <strong>found / run an AI safety R&amp;D lab</strong>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===================== CONSTITUTION ===================== -->
+  <section class="constitution" id="constitution">
+    <div class="constitution__preface">
+      <span class="section-tag"><em>06</em> · self-governance</span>
+      <h2 class="display">
+        <span>A constitution</span>
+        <span class="display--italic">for not drifting.</span>
+      </h2>
+      <p class="constitution__sub">
+        Written so that <em>ambition serves what is sacred</em>. Articles distilled below.
+      </p>
+    </div>
+
+    <div class="constitution__scroll" id="consScroll">
+      <article class="article" data-article="I">
+        <header>
+          <span class="article__num">Article I</span>
+          <span class="article__sub">Sovereignty &amp; Aim</span>
+        </header>
+        <p>I will not live merely for comfort, status, distraction, or approval. I will live to participate in the unfolding of a better world.</p>
+        <p class="article__oath">Where there is confusion, I will seek clarity. Where there is fear, I will move toward truth. Where there is difficulty, I will train. <em>Where there is possibility, I will build.</em></p>
+      </article>
+
+      <article class="article" data-article="II">
+        <header>
+          <span class="article__num">Article II</span>
+          <span class="article__sub">The Three Pillars</span>
+        </header>
+        <p>Health foundational. Family central — not secondary to my mission, but the thing my mission serves. Mission worthy of my gifts.</p>
+      </article>
+
+      <article class="article" data-article="III">
+        <header>
+          <span class="article__num">Article III</span>
+          <span class="article__sub">Truth &amp; Reality</span>
+        </header>
+        <p><em>Reality is not negotiable.</em> Four questions at every fork: What is actually happening? What is the evidence? What am I avoiding? <strong>What would courage do here?</strong></p>
+      </article>
+
+      <article class="article" data-article="IV">
+        <header>
+          <span class="article__num">Article IV</span>
+          <span class="article__sub">Technology &amp; Power</span>
+        </header>
+        <p>Technology is power, and power must be governed by conscience. My work with AI shall be directed toward <em>the deepest good available to us</em> — not convenience, not profit, not obedience, but the widening and deepening of what is genuinely life-giving.</p>
+      </article>
+
+      <article class="article" data-article="V">
+        <header>
+          <span class="article__num">Article V</span>
+          <span class="article__sub">Craftsmanship</span>
+        </header>
+        <p>Whatever I build, I will build well. Respect detail. Favor substance over theater. Finish what matters. Prototype, test, refine, persist.</p>
+      </article>
+
+      <article class="article" data-article="VI">
+        <header>
+          <span class="article__num">Article VI</span>
+          <span class="article__sub">Character</span>
+        </header>
+        <p>Courage. Discipline. Humility. Gentleness. <em>Strong enough to be kind.</em></p>
+      </article>
+
+      <article class="article" data-article="X">
+        <header>
+          <span class="article__num">Article X</span>
+          <span class="article__sub">Order of Decision</span>
+        </header>
+        <ol class="article__order">
+          <li>Does this protect or damage health?</li>
+          <li>Does this strengthen or weaken my family?</li>
+          <li>Does this serve or betray my mission?</li>
+          <li>Is it true?</li>
+          <li>Is it courageous?</li>
+          <li>Is it beautiful?</li>
+          <li>Does it propagate genuine goodness outward?</li>
+        </ol>
+      </article>
+
+      <article class="article article--oath" data-article="OATH">
+        <header>
+          <span class="article__num">Final Oath</span>
+        </header>
+        <p class="article__vow">I will not live accidentally.</p>
+        <p>I will cultivate a strong body, a clear mind, a loving home, a worthy mission, and a reverent spirit. I will use my gifts boldly, but not blindly. I will build with conscience. I will love with presence. I will pursue excellence without losing my soul. I will aim my life at the highest good I can find. And when I fail, I will return quickly, honestly, and without self-pity.</p>
+        <p class="article__signature">— Maxwell Calkin</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===================== CONNECT ===================== -->
+  <section class="connect" id="connect">
+    <div class="connect__inner">
+      <span class="section-tag"><em>07</em> · connect</span>
+      <h2 class="display connect__display">
+        <span>If you build</span>
+        <span>at this edge —</span>
+        <span class="display--italic">let's talk.</span>
+      </h2>
+
+      <p class="connect__lede">
+        I want to hear from people working on AI alignment, safety-motivated
+        foundation model research, interpretability, integral theory, or
+        anyone who takes the widening of consciousness as a serious project.
+      </p>
+
+      <div class="connect__channels">
+        <a class="channel" href="mailto:hello@maxcalkin.com">
+          <span class="channel__label">email</span>
+          <span class="channel__value">hello@maxcalkin.com</span>
+          <span class="channel__glyph">→</span>
+        </a>
+        <a class="channel" href="https://x.com/">
+          <span class="channel__label">public square</span>
+          <span class="channel__value">@maxcalkin</span>
+          <span class="channel__glyph">→</span>
+        </a>
+        <a class="channel" href="https://github.com/">
+          <span class="channel__label">build log</span>
+          <span class="channel__value">github / maxcalkin</span>
+          <span class="channel__glyph">→</span>
+        </a>
+        <a class="channel" href="#">
+          <span class="channel__label">long form</span>
+          <span class="channel__value">essays · soon</span>
+          <span class="channel__glyph">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="foot">
+    <div class="foot__mark">
+      <span class="foot__glyph">M · C</span>
+      <span class="foot__words">strong enough to be kind</span>
+    </div>
+    <div class="foot__meta">
+      <span>© MMXXVI Maxwell Calkin</span>
+      <span>in service of the unfolding</span>
+    </div>
+    <div class="foot__credo">
+      <span>live life best</span>
+    </div>
+  </footer>
+
+  <!-- libs -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="cosmos.js"></script>
+  <script src="main.js"></script>
+</body>
 </html>
-
-
-
-
