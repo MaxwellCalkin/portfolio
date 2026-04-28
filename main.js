@@ -83,7 +83,7 @@
   });
 
   // ---------- Section rail ----------
-  const sectionIds = ['hero', 'credo', 'mission', 'consciousness', 'journey', 'pillars', 'constitution', 'connect'];
+  const sectionIds = ['hero', 'credo', 'mission', 'consciousness', 'journey', 'pillars', 'constitution', 'long-form', 'connect'];
   const sections = sectionIds
     .map((id) => ({ id, el: document.getElementById(id) }))
     .filter((s) => s.el);
