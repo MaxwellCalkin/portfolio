@@ -223,20 +223,45 @@
               <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
                 <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.2"/>
               </pattern>
-              <linearGradient id="idealLine" x1="0" y1="1" x2="1" y2="0">
-                <stop offset="0%" stop-color="#e6a25c" stop-opacity="0.2"/>
-                <stop offset="50%" stop-color="#f4c971" stop-opacity="0.9"/>
-                <stop offset="100%" stop-color="#f8d998" stop-opacity="1"/>
+              <linearGradient id="safeFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7ad3c0" stop-opacity="0.20"/>
+                <stop offset="100%" stop-color="#7ad3c0" stop-opacity="0.02"/>
               </linearGradient>
+              <linearGradient id="dangerFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e06464" stop-opacity="0.04"/>
+                <stop offset="100%" stop-color="#e06464" stop-opacity="0.32"/>
+              </linearGradient>
+              <radialGradient id="goalGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#f4c971" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#f4c971" stop-opacity="0"/>
+              </radialGradient>
             </defs>
             <rect width="320" height="320" fill="url(#grid)"/>
+
+            <!-- Safe zone (upper-left triangle: alignment >= capability) -->
+            <polygon points="20,300 20,20 300,20" fill="url(#safeFill)"/>
+            <!-- Danger zone (lower-right triangle: capability > alignment) -->
+            <polygon points="20,300 300,300 300,20" fill="url(#dangerFill)"/>
+
+            <!-- Boundary diagonal (alignment == capability) -->
+            <line x1="20" y1="300" x2="300" y2="20" stroke="#e6a25c" stroke-opacity="0.45" stroke-width="0.8" stroke-dasharray="2 4"/>
+
+            <!-- Axes -->
             <line x1="20" y1="300" x2="300" y2="300" stroke="currentColor" opacity="0.4" stroke-width="0.6"/>
             <line x1="20" y1="300" x2="20" y2="20" stroke="currentColor" opacity="0.4" stroke-width="0.6"/>
-            <!-- Ideal alignment diagonal: capability == alignment -->
-            <line x1="20" y1="300" x2="300" y2="20" stroke="url(#idealLine)" stroke-width="1.2" stroke-dasharray="3 3"/>
+
+            <!-- Goal marker: top-right corner (high capability + high alignment) -->
+            <circle cx="300" cy="20" r="22" fill="url(#goalGlow)"/>
+            <circle cx="300" cy="20" r="3.5" fill="#f4c971"/>
+            <line x1="290" y1="20" x2="300" y2="20" stroke="#f4c971" stroke-width="1"/>
+            <line x1="300" y1="20" x2="300" y2="30" stroke="#f4c971" stroke-width="1"/>
+
+            <!-- Labels -->
             <text x="300" y="314" text-anchor="end" class="viz__axis">capability →</text>
             <text x="14" y="20" transform="rotate(-90 14 20)" text-anchor="end" class="viz__axis">alignment →</text>
-            <text x="285" y="42" text-anchor="end" class="viz__axis viz__axis--diag">ideal &nbsp;y&nbsp;=&nbsp;x</text>
+            <text x="50" y="58" class="viz__zone viz__zone--safe">SAFE — alignment leads</text>
+            <text x="290" y="285" text-anchor="end" class="viz__zone viz__zone--danger">DANGER — capability leads</text>
+            <text x="282" y="50" text-anchor="end" class="viz__goal-label">the goal</text>
           </svg>
           <div class="viz__orb" id="orbGood"></div>
           <div class="viz__drop" id="orbLine"></div>
@@ -289,7 +314,6 @@
         <div class="holon holon--7"><span>kosmos</span></div>
         <div class="holon__center">
           <span class="holon__label">holon</span>
-          <span class="holon__hint">hover to trace</span>
         </div>
       </div>
 
@@ -649,9 +673,9 @@
       </p>
 
       <div class="connect__channels">
-        <a class="channel" href="mailto:hello@maxcalkin.com">
+        <a class="channel" href="mailto:mcalkinmusic@gmail.com">
           <span class="channel__label">email</span>
-          <span class="channel__value">hello@maxcalkin.com</span>
+          <span class="channel__value">mcalkinmusic@gmail.com</span>
           <span class="channel__glyph">→</span>
         </a>
         <a class="channel" href="https://x.com/">

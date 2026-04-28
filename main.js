@@ -122,9 +122,8 @@
     const vbX = xMin + cap * (xMax - xMin);
     const vbY = yBottom - align * (yBottom - yTop);
 
-    // Drop line goes from orb down (or up) to the ideal diagonal y = x
-    // Ideal y for a given cap is: yBottom - cap * (yBottom - yTop)
-    const idealY = yBottom - cap * (yBottom - yTop);
+    // Boundary y for a given cap (alignment == capability)
+    const boundaryY = yBottom - cap * (yBottom - yTop);
 
     const canvas = document.getElementById('viz-alignment');
     if (!canvas) return;
@@ -136,27 +135,34 @@
     orbGood.style.left = orbPx.x + 'px';
     orbGood.style.top = orbPx.y + 'px';
 
-    // Drop line (from orb to the ideal diagonal, vertically)
-    const idealPx = toPx(vbX, idealY);
-    const dropDy = idealPx.y - orbPx.y;
-    const dropLen = Math.abs(dropDy);
-    const gap = align - cap; // positive = wisdom-leading, negative = drift
+    // Gap: positive when alignment >= capability (safe), negative when below
+    const gap = align - cap;
+    const inDanger = gap < 0;
 
-    orbLine.style.left = orbPx.x + 'px';
-    orbLine.style.top = dropDy >= 0 ? orbPx.y + 'px' : idealPx.y + 'px';
-    orbLine.style.height = dropLen + 'px';
-    orbLine.style.opacity = String(Math.min(Math.abs(gap) * 2.2, 0.85));
+    // Drop line: only show in danger zone, drawn from orb up to the boundary
+    if (inDanger) {
+      const boundaryPx = toPx(vbX, boundaryY);
+      const dropLen = Math.abs(boundaryPx.y - orbPx.y);
+      orbLine.style.left = orbPx.x + 'px';
+      orbLine.style.top = boundaryPx.y + 'px';
+      orbLine.style.height = dropLen + 'px';
+      orbLine.style.background = 'linear-gradient(to bottom, rgba(224,100,100,0.85), rgba(224,100,100,0))';
+      orbLine.style.opacity = String(Math.min(-gap * 2, 0.9));
+    } else {
+      orbLine.style.opacity = '0';
+      orbLine.style.height = '0px';
+    }
 
-    // Orb color shifts: red below diagonal, gold on/near it, teal above
+    // Orb color
     let r, g, b;
     if (gap >= 0) {
-      // on or above diagonal — interpolate gold → teal
+      // safe zone — gold → teal as we go higher above the line
       const t = Math.min(gap * 1.4, 1);
       r = Math.round(244 * (1 - t) + 122 * t);
       g = Math.round(201 * (1 - t) + 211 * t);
       b = Math.round(113 * (1 - t) + 192 * t);
     } else {
-      // below diagonal — interpolate gold → red
+      // danger zone — gold → red as we drift below
       const t = Math.min(-gap * 1.4, 1);
       r = Math.round(244 * (1 - t) + 224 * t);
       g = Math.round(201 * (1 - t) + 80 * t);
@@ -164,14 +170,21 @@
     }
     orbGood.style.setProperty('--orb-color', `${r}, ${g}, ${b}`);
 
+    // Adaptive scale: bigger orb at higher capability so the "stakes" feel real
+    const scale = 0.75 + cap * 0.7;
+    orbGood.style.width = (44 * scale) + 'px';
+    orbGood.style.height = (44 * scale) + 'px';
+
     // State label
     let label;
-    if (Math.abs(gap) < 0.08) label = 'on the line — aligned';
-    else if (gap >= 0.3) label = 'wisdom leading — safe';
-    else if (gap >= 0.08) label = 'aligned, slightly ahead';
-    else if (gap > -0.2) label = 'drifting — close attention';
-    else if (gap > -0.45) label = 'misaligned scale-up';
-    else label = 'capable & drifting — danger';
+    if (cap < 0.15 && align < 0.15) label = 'nascent';
+    else if (gap >= 0.4) label = 'wisdom anchor — safe';
+    else if (gap >= 0.1 && cap > 0.7) label = 'aligned superintelligence — the goal';
+    else if (gap >= 0.1) label = 'aligned';
+    else if (gap >= -0.05) label = 'on the line';
+    else if (gap > -0.2) label = 'drift — attention required';
+    else if (cap > 0.7) label = 'DANGER — misaligned scale-up';
+    else label = 'misaligned';
     vizState.textContent = label;
     vizState.style.color = gap < -0.2 ? '#e06464' : gap > 0.2 ? '#7ad3c0' : '#f4c971';
   }

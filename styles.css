@@ -684,10 +684,19 @@ body::after {
   opacity: 0;
   pointer-events: none;
 }
-.viz__axis--diag {
-  fill: var(--flame);
-  opacity: 0.7;
+.viz__zone {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.viz__zone--safe { fill: #7ad3c0; opacity: 0.7; }
+.viz__zone--danger { fill: #e06464; opacity: 0.7; }
+.viz__goal-label {
+  font-family: var(--display);
   font-style: italic;
+  font-size: 11px;
+  fill: var(--flame);
 }
 
 .viz__controls {
