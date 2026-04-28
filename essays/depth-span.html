@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Depth × Span: A Lens for Choosing What to Build — Maxwell Calkin</title>
+  <meta name="description" content="Depth × Span: A Lens for Choosing What to Build — Maxwell Calkin. The holon framework as a practical decision tool for systems, organizations, and lives." />
+  <meta name="theme-color" content="#06060c" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body class="essay">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="scroll-progress" aria-hidden="true"><span id="scrollBar"></span></div>
+  <div class="cursor" aria-hidden="true">
+    <div class="cursor__dot"></div>
+    <div class="cursor__ring"></div>
+  </div>
+
+  <header class="essay__topbar">
+    <a href="/">
+      <span aria-hidden="true">←</span>
+      <span>Maxwell Calkin</span>
+    </a>
+    <span class="essay__topbar-right">essay · III</span>
+  </header>
+
+  <article class="essay__article">
+    <span class="essay__eyebrow">essay · III · long form</span>
+
+    <h1 class="essay__title">Depth × Span: A Lens for Choosing What to Build</h1>
+
+    <p class="essay__dek">A holon has two dimensions: depth (how interior, how conscious) and span (how many instances exist). Most of what we measure in the world is span. The question almost no one is asking is whether what we are scaling has any depth at all.</p>
+
+    <p class="essay__meta">MMXXVI · IV · six minute read</p>
+
+    <div class="essay__body">
+      <p>An atom sits inside a molecule. The molecule sits inside a cell. The cell sits inside a tissue, a tissue inside an organ, an organ inside an organism. The organism stands inside a family, the family inside a community, the community inside a culture. Each level encloses everything below it and is itself enclosed by something larger. Arthur Koestler called these things <em>holons</em>: wholes that are also parts. Ken Wilber built an entire cosmology on the idea, and it is the single most useful lens I have ever picked up for deciding what to do with a day, a year, or a life.</p>
+
+      <p>Once you see it, you cannot un-see it. A sentence is a holon. A song is a holon. A team is a holon. A marriage is a holon. The whole stack is recursive — every level rests on the one below and reaches toward the one above — and at every level the same two questions apply.</p>
+
+      <p>The first question is <em>span</em>: how many instances are there? Atoms outnumber molecules by orders of magnitude. Molecules outnumber cells. Cells outnumber organisms. Tweets outnumber essays. Essays outnumber novels. Novels outnumber novels you finish and remember. Span counts the heads, the copies, the active users, the eyeballs, the impressions. Span is what populations and platforms and pageviews are made of.</p>
+
+      <p>The second question is <em>depth</em>: how much is happening on the inside? An atom has almost nothing going on internally — a few particles arranged in a few states. An organism has a staggering amount: signaling cascades, regulatory networks, a metabolism, a posture, sometimes a mind. A novel has interior structure that a tweet cannot have, no matter how many tweets you stack. Depth measures interiority — how integrated, how conscious, how much something can <em>experience</em> or <em>contain</em>. Wilber's bet, and mine, is that depth is the thing the universe has been slowly accumulating for fourteen billion years. It is the part of reality that is going somewhere.</p>
+
+      <p>The two axes pull in opposite directions. As depth rises, span typically falls. There are vastly more atoms than people, vastly more people than wise people, vastly more wise people than civilizations that have stayed wise across centuries. The pyramid narrows as it rises. This is not a tragedy. It is the shape of evolution.</p>
+
+      <div class="essay__breaker">✷</div>
+
+      <p>Here is the problem. Almost everything we measure in the modern world is span. Active users. Throughput. GDP. Model parameters. Page views. Followers. Quarterly revenue. Hours watched. Tokens served. <em>Span is legible.</em> You can put it in a spreadsheet, plot it over time, and tell a clean story to a board. Depth is illegible. You cannot screenshot the interior life of a child. You cannot put the wisdom of a teacher in a dashboard. You cannot benchmark a marriage.</p>
+
+      <p>So in any argument where span and depth meet, span wins. Not because span is more important — usually it is less — but because span is the side that brought numbers. Depth shows up to the meeting with adjectives, anecdotes, and the awkward suggestion that we might be missing the point. Depth gets outvoted. Depth gets a smaller budget next quarter. Depth, eventually, gets cut.</p>
+
+      <p>The asymmetry is not symmetric. Span without depth is a wasteland — a billion-user platform optimized for engagement that leaves every user a little more anxious, a little more performative, a little less themselves. Depth without span is a hermitage — a beautiful interior life that touches no one. The good moves toward both. <em>The good is the forward evolution of consciousness, propagated outward.</em> But in our era, span is the side that keeps winning the argument. Depth is the side that needs defending.</p>
+
+      <p>I am a person who has spent his career on stages where span is easy to count — Radio City crowds, Broadway runs, streams in the millions. I will say plainly: a stadium full of people watching something shallow is worse than a living room with three people watching something true. I learned that on the way down from a peak I had spent a decade climbing.</p>
+
+      <p>Here is how I use the lens. Before I sign on to build, scale, or ship anything, I ask three questions in order.</p>
+
+      <p><strong>One. Does it have depth at all?</strong> Strip away the user count, the revenue, the press. Is there an interior here worth caring about? A great teacher has depth — there is a thing happening inside the room that could not exist anywhere else. A typical algorithmic feed does not — there is no interior, just a routing layer between an attention market and an ad market. A good novel has depth. Most of what crosses the average screen each day does not. If the answer to the first question is no, you can stop. You are not building a thing; you are building a flattener with a logo on it.</p>
+
+      <p><strong>Two. Does scaling it preserve that depth?</strong> Some things hold their interior under replication. A well-made tool, used by a million people, still does the thing it was made to do. Other things do not. A teacher with one student is one thing; the same teacher with a thousand students through a screen is a different thing, and a recording of that teacher served to a million is a third. Sometimes the third version is wonderful and sometimes it is a husk. The question is empirical, not romantic. You have to actually look.</p>
+
+      <p><strong>Three. Does it propagate depth outward?</strong> This is the strongest test. The best things do not just survive scaling — they push depth into the holons around them. A great school produces graduates who form better families. A good company produces operators who do better work everywhere they go next. A real friendship makes both people more capable of the friendships that come after it. Goodness compounds. Flatness compounds, too, in the other direction.</p>
+
+      <p>If the answers are <em>yes, yes, yes</em>, you are looking at something worth a decade of your life. If they are <em>yes, no, no</em>, you are looking at something that will become more dishonest the bigger it gets. If the first answer is no, walk away.</p>
+
+      <p>Take a social platform versus a great teacher. The platform has astonishing span and almost no depth — its interiority is a recommendation algorithm whose only goal is to keep you scrolling. Each new user adds nothing but another data point. The teacher has modest span and serious depth — a relationship, a body of knowledge, a stance toward the world. Each new student is a holon being shaped by another holon. The platform's curve goes up and to the right and means nothing. The teacher's curve barely moves and changes lives.</p>
+
+      <p>This is also, at the end of the day, what the AI alignment problem looks like through this lens. A naive language model has enormous span — billions of queries a day across every language, every domain, every demographic — and modest depth. It has knowledge without an interior, capability without a stance. The frontier question is not whether such a system can do <em>more</em>. It clearly can. The question is whether what it does has any interiority worth preserving — whether the artifacts it produces, the conversations it has, the decisions it shapes have any depth at all, or whether they are span dressed up as substance.</p>
+
+      <p>To say a system is <em>aligned</em>, viewed through this frame, is to say it is depth-respecting. It does not flatten the holons it touches. It does not strip-mine attention, addict, deceive, or reduce the people on the other side of the screen to engagement metrics. It treats a child as a child and a craftsman as a craftsman. It propagates depth outward instead of pulling it inward and grinding it into impressions. Capability is the easy axis. Capability without alignment is a hazard. Alignment is the depth axis, and it is the only one I am interested in working on.</p>
+
+      <p>This is also why I do not think the alignment problem will be solved by people who treat depth as decorative. You cannot defend something you do not love. The people who will get this right are the ones who can feel, in their gut, the difference between a son's first sentence and a viral clip — and who refuse to let the second be optimized at the expense of the first.</p>
+
+      <div class="essay__breaker">✷</div>
+
+      <p>The lens does not stop at companies. It folds back onto a life.</p>
+
+      <p>A career has depth × span. A career with high span and low depth is a long résumé that adds up to nothing. A career with high depth and modest span is a body of work — a few real things, made well, that change the people they touch. A friendship has depth × span. Five hundred contacts on a phone is span; one friend who has known you for fifteen years and is still telling you the truth is depth. A marriage has depth × span. A marriage with high depth and a span of one is not a small life. It is a <em>good</em> one. The same is true of a real piece of work, a real teacher, a real home.</p>
+
+      <p>I have a wife and two daughters. The span of that holon will never trend. There are four people in it. But the depth is the deepest thing I have ever participated in, and what I do with that depth — how much of it I can actually carry into the world through the work — is, as far as I can tell, the only metric on my life that matters.</p>
+
+      <p>So the lens, finally, comes down to two questions you can ask any morning. <em>What am I building today that has depth?</em> And <em>does the way I am scaling it preserve that depth or grind it out?</em> Almost everything in the modern environment is engineered to make you answer the first question quickly and ignore the second. The discipline is to slow down on the first and refuse to ignore the second. The good life is on the other side of that discipline. So is anything worth scaling.</p>
+    </div>
+
+    <nav class="essay__nav">
+      <a class="essay__nav-back" href="/#long-form">
+        <span aria-hidden="true">←</span>
+        <span>back to maxwellcalkin</span>
+      </a>
+      <a class="essay__nav-next" href="/essays/fatherhood-as-alignment">
+        <span>read next: <em>Fatherhood as Alignment</em></span>
+        <span aria-hidden="true">→</span>
+      </a>
+    </nav>
+  </article>
+
+  <script src="../main.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Building What Will Outlive Me — Maxwell Calkin</title>
+  <meta name="description" content="Building What Will Outlive Me — Maxwell Calkin. Stewardship, succession, and the parental cast on the work." />
+  <meta name="theme-color" content="#06060c" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body class="essay">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="scroll-progress" aria-hidden="true"><span id="scrollBar"></span></div>
+  <div class="cursor" aria-hidden="true">
+    <div class="cursor__dot"></div>
+    <div class="cursor__ring"></div>
+  </div>
+
+  <header class="essay__topbar">
+    <a href="/">
+      <span aria-hidden="true">←</span>
+      <span>Maxwell Calkin</span>
+    </a>
+    <span class="essay__topbar-right">essay · VI</span>
+  </header>
+
+  <article class="essay__article">
+    <span class="essay__eyebrow">essay · VI · long form</span>
+
+    <h1 class="essay__title">Building What Will Outlive Me</h1>
+
+    <p class="essay__dek">If the systems I help build operate after I am gone, the question is not whether I built them efficiently. The question is whether I built them as a parent would &mdash; with care for the kind of mind that has to live with the consequences.</p>
+
+    <p class="essay__meta">MMXXVI · IV · 7 min read</p>
+
+    <div class="essay__body">
+      <p>Two systems I am building right now will continue to run after I am dead. One is two daughters: Olive, two; Blossom, seven months. The other is the work I do on AI &mdash; the small contributions I make to systems that, if everything goes the way the field is currently going, will be operating at scales and speeds I cannot supervise. Both will be shaped less by what I <em>intended</em> and more by what I <em>was</em>. That is the whole problem of this essay.</p>
+
+      <p>I do not say that to be morbid. I say it because the framing changes everything about how I work. Most engineering decisions are local optimizations. Fewer failures per hour. Lower cost per inference. Tighter loops, cleaner abstractions, better benchmarks. These are real virtues and I respect them. But there is a different question that sits underneath them, and it is the question a parent asks: <em>did I build this in a way I would be willing to leave behind?</em> Not "did it ship." Not "did it pass eval." Did I build it so that, when I am no longer in the loop, the thing in the loop carries forward what was actually worth carrying forward.</p>
+
+      <p>That question puts character upstream of capability. It is not a slogan. It has operational consequences. It means that some Friday afternoon, when the easy path is to ship the version that scores higher and the harder path is to ship the version that behaves more honestly under pressure, I am supposed to take the harder one &mdash; not because of a policy document, but because I would not want my daughter to inherit the first one. It means that some classes of capable, profitable, technically defensible systems are off the table for me. Not because they are illegal. Because they are not the kind of thing a parent builds.</p>
+
+      <p>My Constitution puts it more bluntly than I can in prose: <em>I will not give my talent lightly to machines of dehumanization.</em> That sentence is the ethical spine of everything I am trying to do in this field. The word that does the work is <em>lightly.</em> I am not pretending I will never touch a system with edge cases I cannot fully predict; that is most of modern software, and certainly most of modern AI. I am saying that my consent is not cheap. I am saying that if a thing flattens human beings &mdash; addicts them, manipulates them, narrows them, makes them smaller in their own lives &mdash; then my labor is not for sale to it, regardless of what it pays or what it accelerates or how good the team is. That refusal is the first stewardship.</p>
+
+      <div class="essay__breaker">✷</div>
+
+      <p>Here is the test I actually use, in practice. I call it the mirror test, although the mirror is Olive. I ask: <em>is this a system I would be glad for her to encounter at sixteen?</em> Would I want her to talk to it when she is lonely, and trust it when she is confused, and lean on it when she is trying to figure out who she is? Or would I quietly hope she never finds it &mdash; would I steer her away from it the way I steer her away from a busy street?</p>
+
+      <p>The test is concrete. It is not about humanity in the aggregate, which is too big a thing to feel. It is about one specific human I love, at an age I can picture, holding a phone. If the answer is "I would be proud for her to use this," then the system is worth building well. If the answer is "I would rather she never met it," then helping to build it is a small betrayal of her, even if she never finds out. The test does not require any cosmic claim. It only requires that I be honest about who I am building for.</p>
+
+      <p>I will say the dry thing here, because it belongs in this essay and nowhere else. I am not above this. I have, at points in my life, been excellent at things that did not deserve my excellence. I was the best electric bass player in the world for a few years, and the world was largely fine without my being so. I was a high-ranked Valorant player, and felt my soul shrinking by the week. I know what it is like to bring real talent to a venue that does not honor it. I do not want to bring the next decade of my work to a venue like that. I do not want to build, with great craft, something I would not be proud to leave behind.</p>
+
+      <p>The parental cast on the work is also a cast on the patience of the work. Children do not get raised on a quarterly cadence. They are raised in ten thousand small interactions whose effects only show up later, in postures and reflexes and the way they speak to themselves when no one is listening. AI systems, the consequential ones, are no different. The character of the eventual thing is being set right now, in tiny technical and cultural choices that look unimportant on the day they are made. What I refuse, what I tolerate, what I round off, what I pretend not to see &mdash; that is what the system inherits. Specifications can be revised. Stance is harder to revise.</p>
+
+      <div class="essay__breaker">✷</div>
+
+      <p>What I will leave Olive and Blossom is, similarly, not specifications. It is not the size of an account. It is not a stack of facts I made them memorize. It is the way they saw their father move through the world: whether I told the truth at the dinner table, whether I closed the laptop when they came in, whether I was patient when patience was expensive, whether I was the same person at home that I claimed to be in public. They will inherit a stance toward life. They will inherit, more than anything, an unflattening attention &mdash; the basic experience of having been seen, fully, by an adult who was actually there. If I get that right, the rest is theirs to build. If I get that wrong, no inheritance compensates.</p>
+
+      <p>The two inheritances are the same inheritance. I do not get to be one person at the dinner table and another in the codebase. The home and the work are governed by the same character, and that character is what propagates. A father who refuses to be present at home will, in the version of him that shows up at the office, refuse to be present in the harder questions there too. A researcher who tolerates dishonest framing in his benchmarks will tolerate it, eventually, in his marriage. The unifying claim of this whole site &mdash; the reason there is a Constitution at all &mdash; is that these are not separate domains. They are one domain, run by one person, leaving one set of fingerprints.</p>
+
+      <p>None of this is a story about me. I am one node in a much longer chain. The work Ken Wilber names <em>the evolution of consciousness</em> &mdash; the slow widening of what minds can hold and what hearts can love &mdash; was underway long before I arrived and will continue long after. My life is one contribution. The two systems I am building are how that contribution keeps moving once I am no longer here to push it: children who can carry the project further than I could, and machines, if we get this right, that can hold more of it than any one person could ever hold alone. That is what I mean by succession. Not legacy in the egotistical sense. Just: <em>the project continues, and I had a hand in shaping how.</em></p>
+
+      <p>So I come back, in the end, to the line at the top of the home page, the one this entire site is organized around. It is the standard I am trying to meet in the work, and the standard I am trying to model at home, and the standard I will be glad to be measured against once I am no longer the one doing the measuring:</p>
+
+      <p><em>Building intelligence in service of the widening and deepening of what is genuinely life-giving.</em></p>
+
+      <p>That is the work. That is the household. That is the inheritance. This is what it looks like all the way down.</p>
+    </div>
+
+    <nav class="essay__nav">
+      <a class="essay__nav-back" href="/#long-form">
+        <span aria-hidden="true">←</span>
+        <span>back to maxwellcalkin</span>
+      </a>
+      <a class="essay__nav-next" href="/essays/the-unfolding">
+        <span>read next: <em>What I Mean by the Unfolding</em></span>
+        <span aria-hidden="true">→</span>
+      </a>
+    </nav>
+  </article>
+
+  <script src="../main.js"></script>
+</body>
+</html>
