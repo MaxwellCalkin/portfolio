@@ -1,0 +1,25 @@
+THE UNFOLDING — ORIGINAL GAME ART
+
+All creature, guardian and celestial-sculpture geometry is original procedural work
+in game/creatures.js and game/project-stars.js. No third-party game models are used.
+
+BEACN
+Public user-owned logo, downloaded from the user's requested site on 2026-09-30:
+https://beacn.space/images/logo-dark-mode-with-word-no-bg.png
+Home page visually inspected: https://beacn.space/
+Logo: thin ivory/cyan outer circle, two separated inner arcs, outlined lowercase
+wordmark. A faithful original 3D interpretation is used as the central landmark.
+The PNG is only used for its small exact-logo plaque.
+
+HEARD
+Home page visually inspected: https://heard-us.vercel.app/
+Ivory serif wordmark, navy/gold palette and “Your Voice Matters” are the source
+identity. The orbital civic-signal sculpture is an original interpretation.
+
+TYPEFACES
+beacn-typeface.json is a glyph-only subset of the Three.js bundled Helvetiker.
+Its complete original copyright and permission notice is retained inside the JSON
+under original_font_information. No glyph outlines were modified.
+heard-typeface.json is a glyph-only subset of the Three.js bundled Droid Serif.
+Copyright (c) 2005–2008 The Android Open Source Project; Apache License 2.0.
+Complete copyright notice and license are in DROID-FONT-LICENSE.txt.

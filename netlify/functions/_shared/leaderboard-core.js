@@ -6,7 +6,7 @@ export const MAX_ENTRIES = 100;
 export const MAX_BODY_BYTES = 1024;
 const DISPLAY_ENTRIES = 10;
 const MAX_ATTEMPTS = 8;
-const FIELDS = ['name', 'score', 'kills', 'level', 'xp', 'duration'];
+const FIELDS = ['name', 'score', 'kills', 'level', 'xp', 'duration', 'bossKills'];
 
 export class LeaderboardError extends Error {
   constructor(message, status = 400, code = 'INVALID_RUN') {
@@ -27,26 +27,30 @@ export function validateRun(input) {
       Object.keys(input).some(key => !FIELDS.includes(key))) {
     throw new LeaderboardError('Send only the callsign and run fields.');
   }
+  const { bossKills = 0 } = input;
   if (typeof input.name !== 'string' || input.name.length > 80 ||
       !integer(input.score, 1, 10_000_000) || !integer(input.kills, 0, 100_000) ||
       !integer(input.xp, 0, 10_000_000) || !integer(input.level, 1, 4) ||
-      !integer(input.duration, 0, 86_400)) {
+      !integer(input.duration, 0, 86_400) || !integer(bossKills, 0, 5) || bossKills > input.kills) {
     throw new LeaderboardError('Run values are missing or outside the supported limits.');
   }
   const { score, kills, xp, level, duration } = input;
-  const crystalXP = xp - kills * 40;
+  // Boss kills already count once in `kills`: each adds 160 XP and 790 score
+  // above the ordinary 40 XP/110 score baseline, for totals of 200 XP/900 score.
+  const crystalXP = xp - kills * 40 - bossKills * 160;
   if (crystalXP < 0 || crystalXP % 5 !== 0 || level !== levelForXP(xp)) {
     throw new LeaderboardError('XP, eliminations, and weapon level do not agree.');
   }
   const crystals = crystalXP / 5;
   const maxWave = 1 + Math.floor(kills / 6);
-  const minScore = kills * 110 + crystals * 20;
-  const maxScore = kills * (100 + maxWave * 10) + crystals * 20 + 25 * (8 + duration * 2);
+  const bossBonus = bossKills * 790;
+  const minScore = kills * 110 + crystals * 20 + bossBonus;
+  const maxScore = kills * (100 + maxWave * 10) + crystals * 20 + bossBonus + 25 * (8 + duration * 2);
   if (kills > 20 + duration * 8 || crystals > 22 + duration * 12 ||
       score < minScore || score > maxScore || score % 5 !== 0) {
     throw new LeaderboardError('This run falls outside the game’s scoring bounds.');
   }
-  return { name: sanitizeName(input.name), score, kills, level, xp, duration };
+  return { name: sanitizeName(input.name), score, kills, level, xp, duration, bossKills };
 }
 
 export function compareScores(a, b) {
@@ -56,8 +60,8 @@ export function compareScores(a, b) {
 
 function publicRow(row) {
   // Explicit projection avoids exposing any future internal metadata.
-  const { id, name, score, kills, level, xp, duration, date } = row;
-  return { id, name, score, kills, level, xp, duration, date };
+  const { id, name, score, kills, level, xp, duration, date, bossKills = 0 } = row;
+  return { id, name, score, kills, level, xp, duration, date, bossKills };
 }
 
 function decodeBoard(entry) {
@@ -74,6 +78,9 @@ function decodeBoard(entry) {
         throw new Error('Invalid stored row');
       }
       const run = validateRun(Object.fromEntries(FIELDS.map(field => [field, row[field]])));
+      // Legacy rows remain valid and keep their stored shape. Defaulting their
+      // public boss count to zero requires no migration or rewrite of old runs.
+      if (row.bossKills === undefined) delete run.bossKills;
       return { ...run, id: row.id, date: row.date };
     } catch {
       throw new LeaderboardError('The shared flight log is temporarily unavailable.', 503, 'UNAVAILABLE');
@@ -91,7 +98,8 @@ export async function readLeaderboard(store) {
 }
 
 function sameRun(a, b) {
-  return a.name === b.name && a.score === b.score && a.kills === b.kills && a.xp === b.xp && a.level === b.level;
+  return a.name === b.name && a.score === b.score && a.kills === b.kills && a.xp === b.xp && a.level === b.level &&
+    (a.bossKills ?? 0) === (b.bossKills ?? 0);
 }
 
 export async function recordRun(store, input, { now = () => new Date(), uuid = randomUUID, pause = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
@@ -103,7 +111,7 @@ export async function recordRun(store, input, { now = () => new Date(), uuid = r
     const current = decodeBoard(entry);
     // A retried browser request does not create duplicate entries after a timeout.
     const duplicate = current.find(row => sameRun(row, incoming) && Math.abs(Date.parse(date) - Date.parse(row.date)) < 10 * 60_000);
-    if (duplicate) return result(current, { submitted: duplicate, ranked: true, duplicate: true });
+    if (duplicate) return result(current, { submitted: publicRow(duplicate), ranked: true, duplicate: true });
     const next = [...current, incoming].sort(compareScores).slice(0, MAX_ENTRIES);
     if (!next.some(row => row.id === incoming.id)) return result(current, { submitted: publicRow(incoming), ranked: false });
 

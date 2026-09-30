@@ -5,9 +5,12 @@ const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const command = (type, details = {}) => window.dispatchEvent(new CustomEvent('game:command', { detail: { type, ...details } }));
 const planetFor = id => PLANETS.find(planet => planet.id === (typeof id === 'object' ? id?.id : id));
-const controlsMarkup = () => `<div class="controls-grid">${[
-  ['Thrust / walk', 'W S'], ['Steer / strafe', 'A D'], ['Look / aim', 'MOUSE / ↑ ↓ ← →'], ['Fire pulse weapon', 'SPACE / CLICK'], ['Boost / vector dash', 'SHIFT'], ['Land / archive / embark', 'E'], ['Set anchor / recall', 'Q'], ['Singularity ultimate', 'R'], ['Open system map', 'M'], ['Pause / close panel', 'ESC'],
-].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>In space, fly toward a world and press E when landing is available. On the surface, find the glowing archive to read, or return to your ship to launch. The map can take you directly to any world.</p><p>On desktop, click the world to capture your mouse. Move the mouse to aim and use WASD to move. Escape releases the mouse. On touchscreens, use the movement arrows, drag to aim, and tap or hold the fire button. Tap the ability icons to dash, anchor, or unleash your ultimate.</p><p class="fine-print">Reading is always available through the navigation. No combat, score, or unlock is needed to read any portfolio section.</p>`;
+const ARROW = '<svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg>';
+const controlsMarkup = () => `<div class="manual-section"><span class="tiny">01 / AT THE HELM</span><h3>Keep the horizon moving.</h3><div class="controls-grid">${[
+  ['Thrust / brake', 'W / S'], ['Turn left / right', 'A / D'], ['Pitch / climb / descend', '↑ / ↓'], ['Fire ship weapons', 'SPACE / CLICK'], ['Ship boost', 'SHIFT'], ['360° evasive loop · in space', 'Q'],
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>Fly straight toward a world to enter its atmosphere. Brake with S, steer over open ground, and descend with ↓. Touchdown is automatic when you are low and slow. Once landed, press E to leave the cockpit.</p><p>To leave a world, walk back to your ship and press E to board. Hold W and ↑ to lift off, then climb above 220 m to return to space. Fly through luminous rings for a boost and watch for hostile ships. Q performs a full evasive loop in space while preserving your forward speed.</p></div><div class="manual-section"><span class="tiny">02 / BOOTS ON THE GROUND</span><h3>Aim with your eyes.</h3><div class="controls-grid">${[
+  ['Walk / strafe', 'W A S D'], ['Look / aim', 'MOUSE'], ['Fire pulse weapon', 'CLICK / SPACE'], ['Vector dash', 'SHIFT'], ['Set anchor / recall', 'Q'], ['Singularity ultimate', 'R'], ['Archive / board / exit ship', 'E'], ['System map / pause', 'M / ESC'],
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>On desktop, click the world to capture your mouse. Move the mouse to aim in third person and use WASD to move relative to your view. Escape releases the mouse. Find the glowing archive to read. Defeat each world’s warden to earn the Starforged Explorer title and aurora thrusters.</p><p>On touchscreens, use the movement arrows and drag across the world to aim. Hold the fire button to shoot. The + and − flight buttons climb and descend; tap an ability to activate it.</p></div><p class="fine-print">The map’s Warp buttons are an optional shortcut. Every world can be reached by flying, and every portfolio section can be read from the navigation without combat, scores, or unlocks.</p>`;
 
 export function initUI() {
   const byId = id => document.getElementById(id);
@@ -21,6 +24,10 @@ export function initUI() {
   let ready = false;
   let errored = false;
   let leaderboardSignature = '';
+  let achievementSignature = '';
+  let controlContext = '';
+  const defeatedWorlds = () => PLANETS.filter(planet => state.defeatedBosses?.includes(planet.id));
+  const achievementEarned = () => state.achievement === 'Starforged Explorer';
   const text = (id, value) => { const node = byId(id); if (node && node.textContent !== String(value)) node.textContent = value; };
   const fraction = (id, value) => { const node = byId(id); if (node) node.style.width = `${clamp(value)}%`; };
 
@@ -29,8 +36,8 @@ export function initUI() {
     button.className = 'map-dot';
     button.dataset.planet = planet.id;
     button.style.setProperty('--planet-color', planet.color);
-    button.style.left = `${50 + planet.position[0] / 12}%`;
-    button.style.top = `${50 + planet.position[2] / 14}%`;
+    button.style.left = `${50 + planet.position[0] / 42}%`;
+    button.style.top = `${50 + planet.position[2] / 49}%`;
     button.setAttribute('aria-label', `Warp to ${planet.name}`);
     button.title = `${planet.name} · Warp to world`;
     const label = document.createElement('span');
@@ -45,8 +52,9 @@ export function initUI() {
     const toast = byId('toast');
     toast.textContent = message;
     toast.classList.add('is-visible');
+    document.body.classList.add('has-toast');
     clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => toast.classList.remove('is-visible'), 4200);
+    toastTimeout = setTimeout(() => { toast.classList.remove('is-visible'); document.body.classList.remove('has-toast'); }, 4200);
   }
 
   function closePanel() {
@@ -74,9 +82,19 @@ export function initUI() {
     text('leaderboard-notice', state.leaderboardNotice || (Number(state.score) > 0 ? `Current run · ${Math.round(state.score).toLocaleString()} points` : 'Earn a score before saving a run.'));
   }
 
+  function renderAchievement(force = false) {
+    const defeated = defeatedWorlds();
+    const earned = achievementEarned();
+    const signature = JSON.stringify([defeated.map(planet => planet.id), earned]);
+    if (!force && signature === achievementSignature) return;
+    achievementSignature = signature;
+    text('dialog-eyebrow', earned ? 'EXPEDITION COMPLETE / ACHIEVEMENT EARNED' : 'FIVE WORLDS / FIVE WARDENS');
+    dialogContent.innerHTML = `<div class="achievement-emblem${earned ? ' is-earned' : ''}" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none"><path d="m48 9 11 24 26 3-19 18 5 27-23-13-23 13 5-27L11 36l26-3L48 9Z"/><circle cx="48" cy="48" r="44"/><circle cx="48" cy="48" r="35"/></svg></div><h2 id="dialog-title">${earned ? 'Starforged<br>Explorer.' : 'Five worlds.<br>One constellation.'}</h2><p class="dialog-lede">${earned ? 'Your explorer title and aurora thrusters are earned. Keep following your curiosity.' : `${defeated.length} of ${PLANETS.length} world wardens defeated in this expedition.`}</p>${earned ? '<div class="achievement-rewards"><span class="tiny">REWARDS EARNED</span><strong>Starforged Explorer</strong><p>Explorer title + aurora thruster cosmetic</p><span class="aurora-swatch" aria-hidden="true"></span></div>' : '<p>Land on each world and face its warden. Clear all five to earn the Starforged Explorer title and an aurora glow for your ship’s thrusters.</p>'}<span class="tiny achievement-run-label">THIS EXPEDITION · ${defeated.length} / ${PLANETS.length} WARDENS</span><ul class="warden-checklist">${PLANETS.map(planet => `<li class="${defeated.includes(planet) ? 'is-cleared' : ''}"><span style="--planet-color:${planet.color}" class="warden-world-dot" aria-hidden="true"></span><span>${planet.name}</span><span class="tiny">${defeated.includes(planet) ? 'DEFEATED' : 'AWAITING YOU'}</span></li>`).join('')}</ul><p class="fine-print">Portfolio reading stays available at every stage of your expedition.</p><div class="dialog-actions"><button class="button button-primary" data-close>${earned ? 'Keep exploring' : 'Continue expedition'} ${ARROW}</button><button class="button button-ghost" data-panel="map">View the system</button></div>`;
+  }
+
   function openPanel(id) {
     if (id === 'leaderboard') id = 'scores';
-    if (!CONTENT[id] && !['map', 'pause', 'controls', 'scores'].includes(id)) return;
+    if (!CONTENT[id] && !['map', 'pause', 'controls', 'scores', 'achievement'].includes(id)) return;
     const wasOpen = dialog.open;
     if (!wasOpen) returnFocus = document.activeElement;
     activePanel = id;
@@ -87,7 +105,9 @@ export function initUI() {
       dialogContent.innerHTML = `<h2 id="dialog-title">${content.title}</h2><p class="dialog-lede">${content.lede}</p>${content.html}<div class="dialog-actions"><button class="button button-ghost" data-warp="${id}">Explore this world <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><button class="button button-ghost" data-close>Return to universe</button></div>`;
     } else if (id === 'map') {
       text('dialog-eyebrow', 'NAVIGATION / FIVE WORLDS');
-      dialogContent.innerHTML = `<h2 id="dialog-title">Chart your<br>own course.</h2><p class="dialog-lede">Five places to explore. A different part of the story on each.</p><ul class="map-destinations">${PLANETS.map(planet => `<li style="--planet-color:${planet.color}"><span class="planet-avatar" aria-hidden="true"></span><div><h3>${planet.name}</h3><p>${planet.description}</p><span class="tiny">${planet.terrain.toUpperCase()}${state.visited?.includes(planet.id) ? ' / VISITED' : ''}</span></div><button class="warp-button" data-warp="${planet.id}" aria-label="Warp to ${planet.name}">WARP <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></li>`).join('')}</ul><p class="fine-print">Warp lands you directly on a world. Find its glowing archive to read, or open any section from the top navigation at any time.</p>`;
+      dialogContent.innerHTML = `<h2 id="dialog-title">Chart your<br>own course.</h2><p class="dialog-lede">Five worlds orbit BEACN. Fly your own approach, or take a shortcut.</p><ul class="map-destinations">${PLANETS.map(planet => `<li style="--planet-color:${planet.color}"><span class="planet-avatar" aria-hidden="true"></span><div><h3>${planet.name}</h3><p>${planet.description}</p><span class="tiny">${planet.terrain.toUpperCase()}${state.defeatedBosses?.includes(planet.id) ? ' / WARDEN DEFEATED' : state.visited?.includes(planet.id) ? ' / VISITED' : ''}</span></div><button class="warp-button" data-warp="${planet.id}" aria-label="Warp to ${planet.name}">WARP <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></li>`).join('')}</ul><div class="system-projects"><a href="https://beacn.space" target="_blank" rel="noopener noreferrer"><span class="tiny">THE CENTRAL SUN</span><strong>BEACN ${ARROW}</strong></a><a href="https://heard-us.vercel.app" target="_blank" rel="noopener noreferrer"><span class="tiny">FEATURED PROJECT</span><strong>Heard Us ${ARROW}</strong></a></div><p class="fine-print">Warp is an optional shortcut to a world’s surface. To land manually, fly toward a planet, brake in its atmosphere, and descend until touchdown. Open any portfolio section from the navigation at any time.</p>`;
+    } else if (id === 'achievement') {
+      renderAchievement(true);
     } else if (id === 'controls') {
       text('dialog-eyebrow', 'FIELD MANUAL / CONTROLS');
       dialogContent.innerHTML = `<h2 id="dialog-title">Make yourself<br>at home.</h2><p class="dialog-lede">Fly, land, explore. Follow your curiosity.</p>${controlsMarkup()}<div class="dialog-actions"><button class="button button-primary" data-close>Back to the universe <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></div>`;
@@ -162,7 +182,6 @@ export function initUI() {
   function update(next) {
     const previousMode = state.leaderboardMode;
     state = { ...state, ...next };
-    document.body.dataset.mode=state.mode;
     document.body.classList.toggle('is-playing', Boolean(state.started) && !errored);
     document.body.classList.toggle('reduce-motion', Boolean(state.reducedMotion));
     document.body.dataset.mode = state.mode || 'space';
@@ -177,38 +196,86 @@ export function initUI() {
     const currentWeapon = WEAPONS[weaponIndex];
     const nextWeapon = WEAPONS[weaponIndex + 1];
     fraction('xp-fill', nextWeapon ? ((xp - currentWeapon.at) / (nextWeapon.at - currentWeapon.at)) * 100 : 100);
-    const hints=document.querySelector('.controls-strip');if(hints){hints.children[0].innerHTML=state.mode==='surface'?'<kbd>W</kbd><kbd>S</kbd> MOVE':'<kbd>W</kbd><kbd>S</kbd> THRUST';hints.children[1].innerHTML=state.mode==='surface'?'<kbd>A</kbd><kbd>D</kbd> STRAFE':'<kbd>A</kbd><kbd>D</kbd> STEER';}
-    text('mode-label', state.mode === 'surface' ? 'SURFACE EXPLORER' : 'ORBITAL EXPLORER');
+    const onFoot = state.mode === 'surface' && !state.vehicle;
+    const atmosphericFlight = state.mode === 'surface' && Boolean(state.vehicle);
+    const inSpace = state.mode === 'space';
+    document.body.dataset.vehicle = onFoot ? 'foot' : 'ship';
+    document.body.classList.toggle('has-boss', Boolean(state.boss && state.boss.health > 0));
+    document.body.classList.toggle('is-boosting', Boolean(state.boostActive));
+    const nextContext = onFoot ? 'foot' : atmosphericFlight ? 'atmosphere' : 'space';
+    if (nextContext !== controlContext) {
+      controlContext = nextContext;
+      const hints = document.querySelector('.controls-strip');
+      hints.children[0].innerHTML = onFoot ? '<kbd>W</kbd><kbd>S</kbd> MOVE' : '<kbd>W</kbd><kbd>S</kbd> THRUST / BRAKE';
+      hints.children[1].innerHTML = onFoot ? '<kbd>A</kbd><kbd>D</kbd> STRAFE' : '<kbd>A</kbd><kbd>D</kbd> STEER';
+      byId('context-control').innerHTML = onFoot ? 'MOUSE LOOK · ESC RELEASES' : '<kbd>↑</kbd><kbd>↓</kbd> CLIMB / DESCEND';
+    }
+    text('mode-label', onFoot ? 'SURFACE EXPLORER' : atmosphericFlight ? state.landed ? 'SHIP LANDED' : 'ATMOSPHERIC FLIGHT' : 'ORBITAL EXPLORER');
+    text('health-label', onFoot ? 'VITALS' : 'HULL');
     byId('speed-value').innerHTML = `${String(Math.abs(Math.round(state.speed || 0))).padStart(3, '0')} <small>M/S</small>`;
-    text('dash-state', state.dashCooldown > 0 ? `${Math.ceil(state.dashCooldown)}s` : 'READY');
-    text('recall-state', state.recallActive ? `RECALL ${state.recallRemaining || ''}` : state.recallCooldown > 0 ? `${Math.ceil(state.recallCooldown)}s` : 'SET ANCHOR');
-    text('ultimate-state', state.ultimate >= 100 ? 'READY' : `${Math.floor(clamp(state.ultimate))}%`);
+    byId('flight-telemetry').hidden = onFoot;
+    text('altitude-label', atmosphericFlight ? `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE` : 'DEEP SPACE');
+    text('flight-activity', state.spaceEnemies > 0 && inSpace ? `${state.spaceEnemies} HOSTILES · ${state.ringCount || 0} RINGS` : `${state.ringCount || 0} RINGS`);
+    byId('touch-flight').hidden = onFoot;
+    text('dash-name', onFoot ? 'VECTOR DASH' : 'BOOST');
+    text('dash-state', onFoot ? state.dashCooldown > 0 ? `${Math.ceil(state.dashCooldown)}s` : 'READY' : state.boostActive ? 'BOOSTING' : 'READY');
+    byId('dash-button').setAttribute('aria-label', onFoot ? 'Vector dash, Shift' : 'Ship boost, Shift');
+    text('recall-name', onFoot ? 'TEMPORAL ANCHOR' : 'EVASIVE LOOP');
+    text('recall-state', onFoot ? state.recallActive ? `RECALL ${state.recallRemaining || ''}` : state.recallCooldown > 0 ? `${Math.ceil(state.recallCooldown)}s` : 'SET ANCHOR' : atmosphericFlight ? 'SPACE ONLY' : state.loopCooldown > 0 ? `${Math.ceil(state.loopCooldown)}s` : '360° · READY');
+    byId('recall-button').disabled = atmosphericFlight;
+    byId('recall-button').setAttribute('aria-label', onFoot ? 'Set temporal anchor or recall, Q' : atmosphericFlight ? 'Evasive loop available in space' : '360 degree evasive loop, Q');
+    byId('ultimate-button').disabled = !onFoot;
+    byId('ultimate-button').title = onFoot ? 'Singularity · R' : 'Singularity is available on foot';
+    text('ultimate-state', !onFoot ? 'ON FOOT ONLY' : state.ultimate >= 100 ? 'READY' : `${Math.floor(clamp(state.ultimate))}%`);
     byId('ultimate-fill').style.setProperty('--charge', `${clamp(state.ultimate)}%`);
-    byId('ultimate-button').classList.toggle('is-ready', state.ultimate >= 100);
+    byId('ultimate-button').classList.toggle('is-ready', onFoot && state.ultimate >= 100);
     const visited = state.visited || [];
+    const defeated = defeatedWorlds();
+    const earned = achievementEarned();
     text('visited-count', `${visited.length} / 5 WORLDS`);
-    document.querySelectorAll('.map-dot').forEach(dot => dot.classList.toggle('is-visited', visited.includes(dot.dataset.planet)));
+    text('warden-count', `${defeated.length} / 5 WARDENS`);
+    byId('warden-progress').setAttribute('aria-label', `View world warden progress, ${defeated.length} of 5 defeated${earned ? ', Starforged Explorer earned' : ''}`);
+    byId('warden-progress').title = earned ? 'Starforged Explorer earned · View expedition progress' : 'Defeat all five wardens to earn Starforged Explorer';
+    byId('warden-progress').classList.toggle('is-earned', earned);
+    document.querySelectorAll('.warden-dots i').forEach((dot, index) => dot.classList.toggle('is-cleared', state.defeatedBosses?.includes(PLANETS[index].id)));
+    document.querySelectorAll('.map-dot').forEach(dot => { dot.classList.toggle('is-visited', visited.includes(dot.dataset.planet)); dot.classList.toggle('is-cleared', Boolean(state.defeatedBosses?.includes(dot.dataset.planet))); });
+    const boss = state.boss;
+    const bossVisible = Boolean(boss && boss.health > 0);
+    byId('boss-status').hidden = !bossVisible;
+    if (bossVisible) {
+      const health = clamp(boss.health / Math.max(1, Number(boss.maxHealth) || 1) * 100);
+      text('boss-name', boss.name || 'World warden');
+      text('boss-health-value', `${Math.ceil(health)}%`);
+      fraction('boss-health-fill', health);
+      byId('boss-health-track').setAttribute('aria-valuenow', String(Math.round(health)));
+    }
     const p = planetFor(state.planetId);
     const near = planetFor(state.nearPlanet);
-    const target = planetFor(state.targetPlanet?.id);
-    if (state.mode === 'surface') {
-      text('objective-title', `${p?.name || 'World'} / Archive signal`);
-      text('objective-detail', state.canInteract ? 'Press E to open the archive' : state.canEmbark ? 'Press E to return to orbit' : 'Find the glowing archive. Explore at your own pace.');
-      text('target-label', state.canInteract ? 'ARCHIVE IN RANGE' : state.canEmbark ? 'SHIP IN RANGE' : `${p?.title || 'SURFACE'} · ${state.weaponName || 'PULSE I'}`);
+    const approach = planetFor(state.approachingPlanet);
+    const target = planetFor(state.targetPlanet?.id || state.targetPlanet);
+    if (onFoot) {
+      text('objective-title', `${p?.name || 'World'} / ${bossVisible ? 'World warden' : 'Archive signal'}`);
+      text('objective-detail', state.canInteract ? 'Press E to open the archive' : state.canEmbark ? 'Press E to board your ship' : bossVisible ? 'Keep moving. Defeat the warden, or explore the archive.' : 'Find the glowing archive. Explore at your own pace.');
+      text('target-label', state.canInteract ? 'ARCHIVE IN RANGE' : state.canEmbark ? 'SHIP IN RANGE · E TO BOARD' : `${p?.title || 'SURFACE'} · ${state.weaponName || 'PULSE I'}`);
+    } else if (atmosphericFlight) {
+      text('objective-title', `${p?.name || 'World'} / ${state.landed ? 'Touchdown' : 'Atmospheric approach'}`);
+      text('objective-detail', state.landed ? 'E to exit ship · W + ↑ to take off' : 'S to brake · ↓ to descend · land low and slow');
+      text('target-label', state.landed ? 'LANDED · E TO EXIT SHIP' : `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE · CLIMB ABOVE 220 M TO LEAVE`);
     } else {
-      text('objective-title', visited.length === 5 ? 'A universe well explored' : 'Explore the five worlds');
-      text('objective-detail', state.canLand ? `${near?.name || 'World'} in range · E to land` : 'Choose a destination on the system map');
-      text('target-label', target ? `NEAREST · ${target.name} / ${Math.round(state.targetPlanet.distance || 0)} M${state.targetPlanet.behind ? ' · BEHIND' : ''}` : near ? `${near.name} / ${Math.round(state.nearestDistance || 0)} M` : 'FOLLOW A SIGNAL');
+      text('objective-title', approach ? `${approach.name} / Approach` : state.spaceEnemies > 0 ? 'Hostile ships on your route' : visited.length === 5 ? 'A universe well explored' : 'Explore the five worlds');
+      text('objective-detail', approach ? 'Keep flying toward the world to enter its atmosphere' : state.spaceEnemies > 0 ? 'Aim and fire · Shift to boost · Q for an evasive loop' : 'Fly toward a world. Follow its approach signal.');
+      text('target-label', target ? `NEAREST · ${target.name} / ${Math.round(state.targetPlanet?.distance || 0)} M${state.targetPlanet?.behind ? ' · BEHIND' : ''}` : near ? `${near.name} / ${Math.round(state.nearestDistance || 0)} M` : 'FOLLOW A SIGNAL');
     }
-    const canInteract = Boolean(state.canLand || state.canInteract || state.canEmbark);
+    const canInteract = atmosphericFlight ? Boolean(state.landed) : onFoot && Boolean(state.canInteract || state.canEmbark);
     byId('interaction').hidden = !canInteract;
-    text('interact-label', state.mode === 'space' ? 'Land & explore' : state.canInteract ? 'Open the archive' : 'Return to orbit');
+    text('interact-label', atmosphericFlight ? 'Exit ship' : state.canInteract ? 'Open the archive' : 'Board ship');
     const mapPosition = state.mode === 'surface' && p ? { x: p.position[0], z: p.position[2] } : state.position || { x: 0, z: 120 };
-    byId('map-player').style.left = `${clamp(50 + mapPosition.x / 12, 3, 97)}%`;
-    byId('map-player').style.top = `${clamp(50 + mapPosition.z / 14, 3, 97)}%`;
+    byId('map-player').style.left = `${clamp(50 + mapPosition.x / 42, 3, 97)}%`;
+    byId('map-player').style.top = `${clamp(50 + mapPosition.z / 49, 3, 97)}%`;
     const soundButton = byId('sound-toggle');
     soundButton.setAttribute('aria-pressed', String(Boolean(state.sound)));
     soundButton.setAttribute('aria-label', state.sound ? 'Turn sound off' : 'Turn sound on');
+    if (activePanel === 'achievement') renderAchievement();
     if (activePanel === 'scores') {
       if (previousMode !== state.leaderboardMode) { const name = byId('pilot-name')?.value || ''; openPanel('scores'); if (byId('pilot-name')) byId('pilot-name').value = name; }
       else renderScores();

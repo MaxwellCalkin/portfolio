@@ -24,3 +24,6 @@ export function saveScore(storage,rows,row) { const next=sortedScores([...rows,r
 export function applyDamage(state,amount) {
   const shieldDamage=Math.min(state.shield,amount);state.shield-=shieldDamage;state.health=Math.max(0,state.health-(amount-shieldDamage));return state.health<=0;
 }
+export const CAMPAIGN_WORLDS=['philosophy','experience','projects','mission','contact'];
+export function registerBossDefeat(defeated,id){return CAMPAIGN_WORLDS.includes(id)?[...new Set([...defeated.filter(x=>CAMPAIGN_WORLDS.includes(x)),id])]:[...defeated];}
+export function campaignComplete(defeated){return CAMPAIGN_WORLDS.every(id=>defeated.includes(id));}

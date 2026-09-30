@@ -56,3 +56,81 @@ body[data-mode=surface] .objective>span:last-child{color:#d0e0dc;text-shadow:0 1
 .featured-projects a{border-bottom:1px solid #8ae8db55;padding:5px 0;color:var(--cream)}
 .featured-projects a span{color:var(--coral);margin-left:4px}
 @media(max-width:600px){.featured-projects{gap:15px;font-size:11px;margin-top:13px}.featured-projects>span{font-size:6px}}
+
+/* Flight expansion: restrained telemetry, world wardens, and earned rewards. */
+.flight-telemetry{display:flex;justify-content:space-between;gap:10px;font:8px/1.5 var(--mono);color:#b7c9ce;letter-spacing:.025em;margin:0 0 3px}
+.flight-telemetry>span:last-child{color:var(--cyan);text-align:right}
+.is-boosting .ship-status .status-dot{box-shadow:0 0 20px var(--cyan),0 0 7px #fff;background:#fff}
+.ability:disabled{cursor:not-allowed;opacity:.42}
+.ability:disabled:hover .ability-glyph{color:inherit}
+.warden-progress{display:flex;align-items:center;gap:9px;min-height:44px;width:100%;background:none;padding:6px 0 0;font:8px var(--mono);letter-spacing:.045em;text-align:left;color:#b7c9ce}
+.warden-progress>.arrow-icon{margin-left:auto;color:var(--coral)}
+.warden-progress.is-earned{color:var(--cyan)}
+.warden-dots{display:flex;gap:4px}
+.warden-dots i{width:5px;height:5px;border:1px solid #8ae8db75;transform:rotate(45deg)}
+.warden-dots i.is-cleared{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 7px #8ae8db50}
+.boss-status{position:absolute;top:187px;left:50%;transform:translateX(-50%);width:min(420px,42vw);flex-direction:column;gap:10px;padding:12px 16px 14px;background:linear-gradient(90deg,transparent,#09121de0 12%,#09121de0 88%,transparent);text-align:center;pointer-events:none}
+.boss-heading{display:flex;align-items:center;gap:14px;font:9px var(--mono);letter-spacing:.08em}
+.boss-heading .tiny{font-size:7px;color:var(--coral);white-space:nowrap}
+.boss-heading strong{font:400 15px var(--display);letter-spacing:.02em;margin:auto}
+.boss-heading>span:last-child{color:#e9c6b4;font-size:9px;min-width:31px;text-align:right}
+.boss-health-track{height:4px;background:#f48c6622;box-shadow:0 0 0 1px #f48c6630;overflow:hidden}
+.boss-health-track i{height:100%;width:100%;display:block;background:linear-gradient(90deg,#d66468,#f2ad76);box-shadow:0 0 10px #f48c6650;transition:width .15s linear}
+.map-beacn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;display:grid;place-items:center;z-index:4;border-radius:50%;color:#f0d994}
+.map-beacn .map-sun{height:9px;width:9px;background:#ffddb0;box-shadow:0 0 7px #fff6c8,0 0 18px #fca563,0 0 28px #fa985d99}
+.map-beacn:before{content:'';width:22px;height:22px;border:1px solid #f0c98c6b;border-radius:50%;transition:transform .2s,border-color .2s}
+.map-beacn:hover:before{transform:scale(1.15);border-color:#f0d994}
+.map-beacn-label{position:absolute;top:34px;left:50%;transform:translateX(-50%);font:7px var(--mono);letter-spacing:.05em;text-shadow:0 1px 4px #000}
+.map-dot{width:44px;height:44px}
+.map-dot-label{top:17px;left:31px}
+.map-dot-label.left{right:30px;left:auto}
+.map-dot.is-cleared:after{border-style:double;border-width:3px;width:15px;height:15px;opacity:.7}
+.manual-section{margin-top:30px;padding-top:25px;border-top:1px solid var(--line)}
+.manual-section>h3{margin-top:11px}
+.manual-section .controls-grid{margin-top:20px}
+.system-projects{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0 15px}
+.system-projects a{display:flex;flex-direction:column;gap:9px;padding:20px;border:1px solid var(--line);min-height:90px}
+.system-projects .tiny{font-size:7px;color:var(--coral)}
+.system-projects strong{display:flex;align-items:center;justify-content:space-between;font:400 23px var(--display)}
+.system-projects .arrow-icon{width:15px;height:15px;color:var(--cyan)}
+.project-link.is-featured{border-left:1px solid #b9a2ff70;padding-left:14px;background:linear-gradient(90deg,#b9a2ff07,transparent 65%)}
+.achievement-emblem{height:84px;width:84px;margin:0 0 28px;color:#7c929d}
+.achievement-emblem svg{width:100%;height:100%;stroke:currentColor;stroke-width:.75}
+.achievement-emblem svg circle:last-child{stroke-dasharray:1 7}
+.achievement-emblem.is-earned{color:var(--cyan);filter:drop-shadow(0 0 13px #8ae8db33)}
+.achievement-emblem.is-earned svg path{fill:#8ae8db14;stroke-width:1}
+.achievement-rewards{position:relative;display:flex;flex-direction:column;gap:10px;margin:30px 0;padding:25px;border:1px solid #8ae8db44;overflow:hidden;background:linear-gradient(120deg,#8ae8db0d,#b9a2ff07)}
+.achievement-rewards strong{font:400 27px var(--display);letter-spacing:-.025em}
+.achievement-rewards p{margin:0!important;font-size:12px!important}
+.achievement-rewards .tiny{font-size:8px}
+.aurora-swatch{display:block;height:3px;width:100%;background:linear-gradient(90deg,#8ae8db,#92e8fa,#b9a2ff,#e7a4df);box-shadow:0 0 14px #b9a2ff50;margin-top:12px}
+.warden-checklist{list-style:none;padding:0;margin:27px 0;border-top:1px solid var(--line)}
+.warden-checklist li{display:flex;align-items:center;gap:13px;padding:17px 0;border-bottom:1px solid var(--line);font-size:13px;color:#a3b4be}
+.warden-checklist li>.tiny{margin-left:auto;font-size:7px;color:#849aa8}
+.warden-checklist .is-cleared,.warden-checklist .is-cleared>.tiny{color:var(--cyan)}
+.warden-world-dot{width:7px;height:7px;flex-shrink:0;border-radius:50%;background:var(--planet-color)}
+.touch-flight{display:flex;flex-direction:column;gap:5px;pointer-events:auto;align-self:flex-end}
+.touch-flight .touch-key{display:flex;flex-direction:column;gap:1px;font:19px/1 var(--display)}
+.touch-flight span{font:5px var(--mono);letter-spacing:.02em}
+@media(min-width:1101px){.vitals{width:235px}.objective{max-width:440px}}
+@media(max-width:1100px){.flight-telemetry{font-size:7px}.warden-progress{font-size:7px;gap:6px}.warden-dots{gap:3px}.boss-status{width:min(420px,60vw)}}
+@media(max-width:850px){.boss-status{top:180px;width:min(420px,70vw)}.boss-heading .tiny{font-size:6px}.boss-heading strong{font-size:14px}.flight-telemetry{font-size:6px}.warden-dots{display:none}.warden-progress{font-size:7px}.controls-strip>#context-control{display:none}}
+@media(max-width:600px){
+ .icon-button{width:44px;min-height:44px}.topbar-tools{margin-top:-8px}.portfolio-nav a{min-height:44px;display:flex;align-items:center}.portfolio-nav{bottom:0}.is-playing .portfolio-nav{bottom:-7px}
+ .map-heading button,.warp-button,.close-dialog,.controls-strip button{min-width:44px;min-height:44px}
+ .map-heading{margin-bottom:-7px}.minimap-wrap{width:174px}.minimap{height:150px}.map-orbit-two{width:159px;height:120px}.map-orbit-one{width:110px;height:79px}
+ .is-playing .minimap-wrap{width:174px;bottom:75px}.is-playing .minimap{height:154px}.is-playing .map-orbit-two{width:167px;height:128px}.is-playing .map-orbit-one{width:112px;height:86px}
+ .is-playing .map-heading{justify-content:flex-end}.is-playing .map-heading>.tiny{display:none}.map-beacn-label{font-size:6px}.map-heading>.tiny{font-size:6px}
+ .flight-telemetry{font-size:7px}.warden-progress{font-size:7px;padding-top:2px;min-height:44px}.warden-dots{display:flex}
+ .vitals{width:160px}.is-playing .bottom-chrome{bottom:189px}.is-playing .abilities{bottom:-49px;gap:4px}
+ .controls-strip{height:44px;min-height:44px}.controls-strip:before{font-size:6px;line-height:1.6;max-width:160px;content:'DRAG TO AIM · WASD TO MOVE'}.controls-strip button{font-size:7px}
+ .touch-controls.in-game{bottom:49px}.touch-flight{margin-inline:5px}.touch-flight .touch-key{font-size:21px}
+ .boss-status{top:191px;width:calc(100vw - 44px);padding:10px 13px 12px;gap:9px}.boss-heading{gap:8px}.boss-heading strong{font-size:13px}.boss-heading .tiny{font-size:6px}.boss-heading>span:last-child{font-size:8px}
+ .boss-health-track{height:3px}.has-boss .toast{top:247px}.objective{max-width:230px}
+ .launch{bottom:185px}.launch-content{padding-bottom:0}.featured-projects a{display:flex;align-items:center;min-height:44px;padding:3px 0}.featured-projects{margin-top:5px}.launch-actions{margin-top:12px}
+ .system-projects{gap:12px}.system-projects a{padding:16px 12px}.system-projects .tiny{font-size:6px}.system-projects strong{font-size:20px}
+ .achievement-emblem{width:64px;height:64px;margin-bottom:22px}.achievement-rewards{padding:20px}.achievement-rewards strong{font-size:24px}
+}
+@media(hover:none) and (min-width:601px){.touch-key{min-width:44px;min-height:44px}.touch-dpad{grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px}.touch-flight{flex-direction:row}.touch-flight .touch-key{height:50px}}
+@media(max-width:600px) and (max-height:710px){.launch{top:113px;bottom:170px}.eyebrow{margin-bottom:12px}.launch-dek{margin-top:14px}.launch-subtitle{line-height:1.5}.featured-projects{margin-top:3px;font-size:10px}.featured-projects>span{font-size:5px}.launch-actions{margin-top:8px}.launch-note{margin-top:8px}.minimap-wrap{width:160px}.minimap{height:137px}.is-playing .minimap-wrap{bottom:61px;width:156px}.is-playing .minimap{height:139px}.boss-status{top:180px}.has-boss .toast{top:235px}}
+@media(max-height:500px) and (min-width:601px){.boss-status{top:128px;padding:8px 15px 10px;gap:7px;width:330px}.boss-heading strong{font-size:13px}.boss-heading .tiny{font-size:6px}.flight-telemetry{font-size:6px}.warden-progress{min-height:27px;font-size:6px}.has-boss .toast{top:187px}}

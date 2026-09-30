@@ -4,8 +4,10 @@ const ENDPOINT = '/.netlify/functions/leaderboard';
 const TIMEOUT_MS = 8_000;
 
 function validGlobalRow(row) {
+  const bossKills = row?.bossKills === undefined ? 0 : row.bossKills;
   return validateScore(row) && Number.isSafeInteger(row.score) && row.score <= 10_000_000 &&
     Number.isSafeInteger(row.kills) && row.kills <= 100_000 &&
+    Number.isSafeInteger(bossKills) && bossKills >= 0 && bossKills <= 5 && bossKills <= row.kills &&
     Number.isSafeInteger(row.xp) && row.xp >= 0 && row.xp <= 10_000_000 &&
     Number.isSafeInteger(row.duration) && row.duration >= 0 && row.duration <= 86_400 &&
     typeof row.id === 'string' && /^[0-9a-f-]{36}$/i.test(row.id) &&
@@ -53,7 +55,7 @@ async function requestScores(options = {}) {
     const scores = data.scores.map(row => ({
       id: typeof row.id === 'string' ? row.id.slice(0, 36) : '',
       name: sanitizeName(row.name), score: row.score, kills: row.kills, level: row.level,
-      date: row.date, xp: row.xp, duration: row.duration,
+      date: row.date, xp: row.xp, duration: row.duration, bossKills: row.bossKills ?? 0,
     }));
     return { mode: 'global', scores, ...(typeof data.ranked === 'boolean' ? { ranked: data.ranked } : {}) };
   } catch (error) {
@@ -72,10 +74,10 @@ export async function fetchGlobalScores() {
 
 // Call only after the visitor explicitly chooses to publish a public callsign/run.
 // This module never uploads localStorage history or retries a POST automatically.
-export async function submitGlobalScore({ name, score, kills, level, xp, duration }) {
+export async function submitGlobalScore({ name, score, kills, level, xp, duration, bossKills }) {
   return requestScores({
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: sanitizeName(name), score, kills, level, xp, duration }),
+    body: JSON.stringify({ name: sanitizeName(name), score, kills, level, xp, duration, bossKills }),
   });
 }

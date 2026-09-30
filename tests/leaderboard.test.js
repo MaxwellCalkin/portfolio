@@ -60,6 +60,31 @@ test('valid gameplay includes instant landing, first-wave ultimate, crystals, an
   ]) assert.doesNotThrow(() => validateRun(run));
 });
 
+test('boss validation accepts each boss total, all five bosses, crystals, and zero-XP ring bonuses', () => {
+  assert.equal(validateRun(valid).bossKills, 0);
+  for (let bossKills = 1; bossKills <= 5; bossKills++) {
+    const xp = bossKills * 200;
+    const level = xp >= 680 ? 4 : xp >= 320 ? 3 : 2;
+    const run = { name: 'Boss Pilot', score: bossKills * 900, kills: bossKills, bossKills, xp, level, duration: 120 };
+    assert.equal(validateRun(run).bossKills, bossKills);
+  }
+  assert.doesNotThrow(() => validateRun({
+    name: 'Complete run', kills: 15, bossKills: 5, xp: 1420, level: 4,
+    score: 5755, duration: 300,
+  })); // 10 ordinary kills, 5 bosses, 4 crystals, and 3 rings/landings.
+  assert.doesNotThrow(() => validateRun({ ...valid, score: 50, kills: 0, xp: 0, duration: 1 }));
+  assert.doesNotThrow(() => validateRun({ ...valid, score: 135 })); // Space kill plus one ring.
+});
+
+test('boss validation rejects excessive counts, non-integers, missing earned XP, and wrong boss scores', () => {
+  const boss = { name: 'Boss Pilot', score: 900, kills: 1, bossKills: 1, xp: 200, level: 2, duration: 120 };
+  for (const patch of [
+    { bossKills: -1 }, { bossKills: 6, kills: 6, xp: 1200, score: 5400, level: 4 },
+    { bossKills: 2 }, { bossKills: 0.5 }, { bossKills: null }, { bossKills: '1' },
+    { xp: 40, level: 1 }, { xp: 199 }, { xp: 201 }, { score: 895 },
+  ]) assert.throws(() => validateRun({ ...boss, ...patch }), JSON.stringify(patch));
+});
+
 test('inconsistent XP, level, score, fractional values, and absurd rates are rejected', () => {
   for (const patch of [
     { xp: 39 }, { xp: 41 }, { level: 4 }, { score: 1 }, { score: 111 },
@@ -104,7 +129,34 @@ test('identical retry is deduplicated without writing or collecting an identifie
   assert.equal(repeated.duplicate, true);
   assert.equal(repeated.submitted.id, first.submitted.id);
   assert.equal(store.writes.length, 1);
-  assert.deepEqual(Object.keys(store.value.scores[0]).sort(), ['date', 'duration', 'id', 'kills', 'level', 'name', 'score', 'xp']);
+  assert.deepEqual(Object.keys(store.value.scores[0]).sort(), ['bossKills', 'date', 'duration', 'id', 'kills', 'level', 'name', 'score', 'xp']);
+});
+
+test('legacy rows remain readable, deduplicated, and unchanged when newer boss runs are added', async () => {
+  const store = new MemoryStore();
+  const legacy = { ...valid, id: options.uuid(), date: options.now().toISOString() };
+  store.value = { version: 1, scores: [structuredClone(legacy)] };
+  const snapshot = structuredClone(store.value);
+  const read = await readLeaderboard(store);
+  assert.equal(read.scores[0].bossKills, 0);
+  assert.deepEqual(store.value, snapshot);
+  assert.equal(store.writes.length, 0);
+  const repeated = await recordRun(store, valid, options);
+  assert.equal(repeated.duplicate, true);
+  assert.equal(repeated.submitted.bossKills, 0);
+  assert.equal(store.writes.length, 0);
+  const added = await recordRun(store, { name: 'Boss Pilot', score: 4500, kills: 5, bossKills: 5, xp: 1000, level: 4, duration: 300 }, options);
+  assert.equal(added.scores[0].bossKills, 5);
+  assert.deepEqual(store.value.scores.find(row => row.id === legacy.id), legacy);
+});
+
+test('duplicate detection distinguishes boss progress from equal ordinary-run totals', async () => {
+  const store = new MemoryStore();
+  const shared = { name: 'Equal totals', kills: 5, xp: 360, level: 3, score: 1340, duration: 120 };
+  await recordRun(store, shared, options); // 32 crystals, no bosses, plus ordinary bonuses.
+  const boss = await recordRun(store, { ...shared, bossKills: 1 }, options);
+  assert.equal(boss.duplicate, undefined);
+  assert.equal(store.value.scores.length, 2);
 });
 
 test('top 100 storage and top 10 response remain bounded', async () => {
