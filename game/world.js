@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createCollisionWorld, createTerrainSampler, createMeshFootprint } from './collision.js';
 
 /* Original procedural world art. All constructors face -Z; terrain coordinates are world-local. */
 export const PLANETS = [
@@ -235,7 +236,7 @@ export function createEnemy(variant = 0) {
 function terrainHeight(x,z,seed) {
   const r=Math.hypot(x,z), outer=THREE.MathUtils.smoothstep(r,34,115);
   const low=Math.sin(x*.022+seed)*Math.cos(z*.026)*2.8+Math.sin(z*.04+x*.011)*1.2;
-  const ridges=Math.pow(Math.abs(Math.sin(x*.018+seed)*Math.cos(z*.019-seed)+.42*Math.sin(z*.045+x*.023)),2.3)*25;
+  const ridges=Math.pow(Math.abs(Math.sin(x*.018+seed)*Math.cos(z*.019-seed)+.42*Math.sin(z*.045+x*.023)),2.3)*12;
   return low*(.24+.76*outer)+ridges*outer+Math.sin(x*.09+z*.03)*Math.sin(z*.08)*outer*.8;
 }
 function crystalGeometry() {
@@ -256,27 +257,34 @@ export function createSurfaceWorld(scene,planetId) {
   const celestial=createPlanet({radius:220,color:index===1?'#8ab7b3':'#d0a18b',position:[-390,410,-1020]},11,true);celestial.root.rotation.z=-.25;group.add(celestial.root);
   const moon=createPlanet({radius:44,color:'#aaa9b0',position:[350,360,-830]},3);group.add(moon.root);
   const sun=createGlow('#ffe2b2',230);sun.position.set(-650,410,220);group.add(sun);
-  const heightAt=(x,z)=>terrainHeight(x,z,seed);
+  const sculptHeight=(x,z)=>terrainHeight(x,z,seed);
   const terrain=new THREE.PlaneGeometry(640,640,160,160);terrain.rotateX(-Math.PI/2);const pos=terrain.attributes.position,col=new Float32Array(pos.count*3),dark=color(theme.ground),light=color(theme.dust),temp=new THREE.Color();
-  for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=heightAt(x,z);pos.setY(i,h);const n=.5+.18*Math.sin(x*.12+Math.cos(z*.074)*3)+.10*Math.sin(z*.34+x*.17);temp.copy(dark).lerp(light,clamp(n+(h/80)*.16,0,1));col.set([temp.r,temp.g,temp.b],i*3);}terrain.setAttribute('color',new THREE.BufferAttribute(col,3));terrain.computeVertexNormals();
+  for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=sculptHeight(x,z);pos.setY(i,h);const n=.5+.18*Math.sin(x*.12+Math.cos(z*.074)*3)+.10*Math.sin(z*.34+x*.17);temp.copy(dark).lerp(light,clamp(n+(h/80)*.16,0,1));col.set([temp.r,temp.g,temp.b],i*3);}terrain.setAttribute('color',new THREE.BufferAttribute(col,3));terrain.computeVertexNormals();
   const land=mesh(terrain,standard('#ffffff',.96,.05,{vertexColors:true}),group);land.name='terrain';land.receiveShadow=true;
+  const terrainSampler=createTerrainSampler(terrain),heightAt=terrainSampler.heightAt;
+  const collision=createCollisionWorld({heightAt,sampleTerrain:terrainSampler.sample});
+  const addFootprint=(geometry,matrix,x,z,kind)=>{const y=heightAt(x,z),shape=createMeshFootprint(geometry,matrix,y+.04,y+2.5);if(shape)collision.addCollider({...shape,kind});};
   // Distant sculpted mesas establish scale beyond the traversable landing basin.
   const mountainGeo=new THREE.IcosahedronGeometry(1,2),mountainMat=standard(theme.rock,.94,.03);const mountains=new THREE.InstancedMesh(mountainGeo,mountainMat,37),dummy=new THREE.Object3D();
-  for(let i=0;i<37;i++){const a=i/37*TAU+(rnd()-.5)*.1,r=205+rnd()*130,x=Math.cos(a)*r,z=Math.sin(a)*r,s=22+rnd()*43;dummy.position.set(x,heightAt(x,z)+s*.5,z);dummy.rotation.set(rnd()*.4,rnd()*TAU,rnd()*.2);dummy.scale.set(s*.85,s*(.75+rnd()*1.35),s*(.65+rnd()));dummy.updateMatrix();mountains.setMatrixAt(i,dummy.matrix);}group.add(mountains);
+  for(let i=0;i<37;i++){const a=i/37*TAU+(rnd()-.5)*.1,r=205+rnd()*130,x=Math.cos(a)*r,z=Math.sin(a)*r,s=22+rnd()*43;dummy.position.set(x,heightAt(x,z)+s*.5,z);dummy.rotation.set(rnd()*.4,rnd()*TAU,rnd()*.2);dummy.scale.set(s*.85,s*(.55+rnd()*.65),s*(.65+rnd()));dummy.updateMatrix();mountains.setMatrixAt(i,dummy.matrix);}group.add(mountains);
   // Low, irregular boulders and tall translucent mineral blooms frame the playable basin.
   const rockGeo=new THREE.IcosahedronGeometry(1,1),rockMat=standard(theme.rock,.84,.14),rocks=new THREE.InstancedMesh(rockGeo,rockMat,250);
-  for(let i=0;i<250;i++){let x=(rnd()-.5)*390,z=(rnd()-.5)*390;if(Math.hypot(x,z)<22){x+=Math.sign(x||1)*27;}const s=.5+rnd()*3.0;dummy.position.set(x,heightAt(x,z)+s*.22,z);dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);dummy.scale.set(s,s*(.4+rnd()*.7),s*(.7+rnd()));dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);}rocks.castShadow=true;rocks.receiveShadow=true;group.add(rocks);
+  for(let i=0;i<250;i++){let x=(rnd()-.5)*390,z=(rnd()-.5)*390;if(Math.hypot(x,z)<22){x+=Math.sign(x||1)*27;}const s=.5+rnd()*3.0;dummy.position.set(x,heightAt(x,z)+s*.22,z);dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);dummy.scale.set(s,s*(.4+rnd()*.7),s*(.7+rnd()));dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);addFootprint(rockGeo,dummy.matrix,x,z,'boulder');}rocks.castShadow=true;rocks.receiveShadow=true;group.add(rocks);
   const crystalGeo=crystalGeometry(),crystalMat=standard(theme.flora,.34,.45,{emissive:theme.flora,emissiveIntensity:.10,flatShading:true}),crystals=new THREE.InstancedMesh(crystalGeo,crystalMat,230);
   const crystalColor=new THREE.Color();
-  for(let i=0;i<230;i++){let a=rnd()*TAU,r=24+Math.pow(rnd(),.85)*170,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<12&&z>-36&&z<45)x+=Math.sign(x||1)*16;const s=.35+rnd()*1.15;dummy.position.set(x,heightAt(x,z)-.2,z);dummy.rotation.set((rnd()-.5)*.45,rnd()*TAU,(rnd()-.5)*.55);dummy.scale.set(s*(.6+rnd()),s*(.7+rnd()*1.5),s);dummy.updateMatrix();crystals.setMatrixAt(i,dummy.matrix);crystalColor.set(theme.flora).multiplyScalar(.62+rnd()*.54);crystals.setColorAt(i,crystalColor);}crystals.castShadow=true;group.add(crystals);
+  for(let i=0;i<230;i++){let a=rnd()*TAU,r=24+Math.pow(rnd(),.85)*170,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<12&&z>-36&&z<45)x+=Math.sign(x||1)*16;const s=.35+rnd()*1.15;dummy.position.set(x,heightAt(x,z)-.2,z);dummy.rotation.set((rnd()-.5)*.45,rnd()*TAU,(rnd()-.5)*.55);dummy.scale.set(s*(.6+rnd()),s*(.7+rnd()*1.5),s);dummy.updateMatrix();crystals.setMatrixAt(i,dummy.matrix);addFootprint(crystalGeo,dummy.matrix,x,z,'crystal');crystalColor.set(theme.flora).multiplyScalar(.62+rnd()*.54);crystals.setColorAt(i,crystalColor);}crystals.castShadow=true;group.add(crystals);
   // Umbrella-shaped xenoflora: sculptural canopies atop tapered charcoal stems.
   const stemGeo=new THREE.CylinderGeometry(.16,.38,5.5,7),capGeo=new THREE.SphereGeometry(1,10,7,0,TAU,0,Math.PI*.55),stemMat=standard(theme.rock,.8,.12),capMat=standard(theme.flora,.8,.12);
   const stems=new THREE.InstancedMesh(stemGeo,stemMat,45),caps=new THREE.InstancedMesh(capGeo,capMat,45);
-  for(let i=0;i<45;i++){const a=rnd()*TAU,r=47+rnd()*145,x=Math.cos(a)*r,z=Math.sin(a)*r,s=.5+rnd()*1.4,y=heightAt(x,z);dummy.rotation.set(0,rnd()*TAU,(rnd()-.5)*.15);dummy.position.set(x,y+s*2.7,z);dummy.scale.set(s,s,s);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);dummy.position.y=y+s*5.35;dummy.scale.set(s*2.9,s*.9,s*2.3);dummy.updateMatrix();caps.setMatrixAt(i,dummy.matrix);}group.add(stems,caps);
+  for(let i=0;i<45;i++){const a=rnd()*TAU,r=47+rnd()*145,x=Math.cos(a)*r,z=Math.sin(a)*r,s=.5+rnd()*1.4,y=heightAt(x,z);dummy.rotation.set(0,rnd()*TAU,(rnd()-.5)*.15);dummy.position.set(x,y+s*2.7,z);dummy.scale.set(s,s,s);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);addFootprint(stemGeo,dummy.matrix,x,z,'tree');dummy.position.y=y+s*5.35;dummy.scale.set(s*2.9,s*.9,s*2.3);dummy.updateMatrix();caps.setMatrixAt(i,dummy.matrix);addFootprint(capGeo,dummy.matrix,x,z,'low-canopy');}group.add(stems,caps);
   // A silent observatory, with luminous inset strips rather than ordinary architecture.
-  arch(group,-39,heightAt(-39,-62),-62,1.4,spec.color,-.24);arch(group,69,heightAt(69,-87),-87,2.1,spec.color,.53);
+  for(const [x,z,s,rotation] of [[-39,-62,1.4,-.24],[69,-87,2.1,.53]]){
+    arch(group,x,heightAt(x,z),z,s,spec.color,rotation);
+    for(const sign of [-1,1]){const lx=sign*4.375*s,lz=.625*s,c=Math.cos(rotation),sn=Math.sin(rotation);collision.addCollider({type:'box',x:x+lx*c+lz*sn,z:z-lx*sn+lz*c,halfX:.775*s,halfZ:.775*s,rotation,kind:'arch-post'});}
+  }
   const structureMat=standard('#253d43',.76,.34),trim=standard(spec.color,.4,.3,{emissive:spec.color,emissiveIntensity:.35});
-  for(let i=0;i<5;i++){let x=-77+i*11,z=-100-(i%2)*12,y=heightAt(x,z),h=9+(i%3)*5;const tower=mesh(new THREE.BoxGeometry(4.2,h,3.2),structureMat,group,x,y+h/2,z);tower.rotation.z=(i-2)*.025;mesh(new THREE.BoxGeometry(.12,h*.7,.06),trim,group,x-1.35,y+h*.53,z-1.66);}
+  for(let i=0;i<5;i++){let x=-77+i*11,z=-100-(i%2)*12,y=heightAt(x,z),h=9+(i%3)*5;const tower=mesh(new THREE.BoxGeometry(4.2,h,3.2),structureMat,group,x,y+h/2,z);tower.rotation.z=(i-2)*.025;tower.updateMatrix();addFootprint(tower.geometry,tower.matrix,x,z,'pillar');mesh(new THREE.BoxGeometry(.12,h*.7,.06),trim,group,x-1.35,y+h*.53,z-1.66);}
+  collision.addCollider({type:'circle',x:0,z:-20,radius:4.3,kind:'archive-base'});
   const by=heightAt(0,-20),beacon=new THREE.Group();beacon.position.set(0,by,-20);group.add(beacon);
   const base=mesh(new THREE.CylinderGeometry(3.4,4.3,.65,8),structureMat,beacon,0,.2,0);mesh(new THREE.CylinderGeometry(2.7,3.15,.15,48),trim,beacon,0,.63,0);
   for(let i=0;i<3;i++){const a=i*TAU/3;const obelisk=mesh(new THREE.ConeGeometry(.43,4.7,4),structureMat,beacon,Math.cos(a)*2.35,2.55,Math.sin(a)*2.35);obelisk.rotation.z=Math.cos(a)*-.10;obelisk.rotation.x=Math.sin(a)*.10;}
@@ -289,6 +297,17 @@ export function createSurfaceWorld(scene,planetId) {
   const padRing=mesh(new THREE.RingGeometry(8.9,9.08,96),new THREE.MeshBasicMaterial({color:theme.dust,side:THREE.DoubleSide,transparent:true,opacity:.48,depthWrite:false}),pad);padRing.rotation.x=-Math.PI/2;
   for(let i=0;i<4;i++){const a=i*Math.PI/2;const marker=mesh(new THREE.BoxGeometry(.2,.04,2),trim,pad,Math.cos(a)*10,0,Math.sin(a)*10);marker.rotation.y=-a;}
   const motesGeo=new THREE.BufferGeometry(),mp=new Float32Array(100*3);for(let i=0;i<100;i++)mp.set([(rnd()-.5)*110,2+rnd()*17,(rnd()-.5)*110],i*3);motesGeo.setAttribute('position',new THREE.BufferAttribute(mp,3));const motes=new THREE.Points(motesGeo,new THREE.PointsMaterial({color:theme.flora,size:.07,transparent:true,opacity:.65,depthWrite:false}));group.add(motes);
-  return {group,heightAt,spawn:[0,heightAt(0,15),15],shipPosition:[0,sy+1.9,25],beaconPosition:[0,by,-20],
+  // Keep the parked hull and both swept wings solid without blocking its boarding radius.
+  const shipYaw=Math.PI*.2,shipPoint=(x,z)=>({x:x*Math.cos(shipYaw)+z*Math.sin(shipYaw),z:25-x*Math.sin(shipYaw)+z*Math.cos(shipYaw)});
+  const nose=shipPoint(0,-5.9),tail=shipPoint(0,4.6);
+  collision.addCollider({type:'capsule',ax:nose.x,az:nose.z,bx:tail.x,bz:tail.z,radius:1.15,kind:'parked-ship'});
+  for(const sign of [-1,1])collision.addCollider({type:'polygon',points:[[sign*1.2,-2.5],[sign*2.7,-.5],[sign*6.8,3.4],[sign*6.55,4.65],[sign*2.75,2.6],[sign*1.08,3.6]].map(([x,z])=>shipPoint(x,z)),kind:'parked-ship'});
+  const setParkedShip=(parkedShip)=>{
+    for(const [id,collider] of collision.colliders)if(collider.kind==='parked-ship')collision.removeCollider(id);
+    parkedShip.updateWorldMatrix(true,true);
+    parkedShip.traverse(part=>{if(part.isMesh&&part.visible&&!part.userData.flame)addFootprint(part.geometry,part.matrixWorld,parkedShip.position.x,parkedShip.position.z,'parked-ship');});
+  };
+  return {group,heightAt,resolveMovement:collision.resolveMovement,addCollider:collision.addCollider,removeCollider:collision.removeCollider,setParkedShip,colliders:collision.colliders,
+    spawn:[0,heightAt(0,15),15],shipPosition:[0,sy+1.9,25],beaconPosition:[0,by,-20],
     update(time,dt){beaconCore.rotation.y=time*.4;beaconCore.rotation.z=Math.sin(time*.5)*.15;beaconCore.position.y=2.45+Math.sin(time*1.5)*.16;halo.rotation.z=time*.3;halo.rotation.x=Math.PI/2+Math.sin(time*.4)*.25;beaconGlow.material.opacity=.32+Math.sin(time*2)*.08;celestial.globe.rotation.y+=dt*.006;motes.rotation.y=Math.sin(time*.03)*.025;stars.material.uniforms.uTime.value=time;},dispose(){disposeGroup(group);}};
 }

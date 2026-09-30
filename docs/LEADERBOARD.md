@@ -46,7 +46,7 @@ Netlify supplies the store connection inside its runtime. No API keys, database 
 - Each elimination accounts for 40 XP; remaining crystal XP must be divisible by five. Score bounds allow 110+ points per kill as waves advance, 20 points per crystal, repeated 25-point flight landings, and the initial singularity burst
 - Generous duration-based ceilings reject obvious impossible bursts; these are coarse checks, not proof of a legitimate run
 - Browser POSTs with an unrelated Origin or cross-site fetch metadata are rejected. The API does not expose cross-origin CORS access
-- Netlify configuration limits the endpoint to 20 requests per 60 seconds for each IP/domain pair. GET and POST share that budget. Platform enforcement can lag and is not a global spending cap
+- Netlify configuration declares a limit of 20 requests per 60 seconds for each IP/domain pair. GET and POST share that budget. Verify acceptance and enforcement on each deployed build before treating that declaration as active protection. Platform enforcement can lag and is not a global spending cap
 - The client never sends browser cookies. The handler returns generic provider-failure messages and no provider credentials
 
 **This is a casual board, not competitive anti-cheat.** Browser code and public run values can be forged; names are not verified identities. The checks reduce accidents and trivial spam. They cannot establish genuine gameplay, prevent all duplicate runs, moderate names, stop a distributed attack, or guarantee a budget ceiling. Competitive rankings would require an authoritative simulation or independently verifiable run replay, authentication, moderation, and stronger abuse controls.
@@ -61,6 +61,12 @@ npm run build
 Leaderboard tests cover scoring boundaries, sanitization, body limits, unsafe origins, broken storage, concurrent conditional writes, bounded retention, duplicate retries, Vite HTML fallback, unavailable network, and error handling. A separate test uses the actual Netlify SDK with its temporary local Blobs emulator for a POST/read round trip and stale-ETag rejection. It never contacts production. Blobs11.1.2's emulator omits ETags on reads: reading and an initial create work there, but subsequent non-duplicate publishing safely returns503 instead of an unconditional write. The tests explicitly cover this limitation.
 
 Build success alone does not test deployed routing, Netlify rate-limit enforcement, or persistent production storage. After an authorized Netlify deployment, check GET on the endpoint, intentionally publish one clearly named test run, then confirm the same board from a second browser/device. Verify the production UI and the separate device-local fallback before declaring the shared service live. Plain `npm run dev` is intentionally local-only; `netlify dev` can emulate Functions/Blobs when configured by the site owner, subject to the emulator ETag limitation above.
+
+### Verifying the platform rate limit
+
+Check the deploy log's **post-processing** stage for the accepted rule and its path, IP/domain aggregation, 20-request limit, and 60-second window. Netlify documents that an invalid or undetected rule may leave deployment successful, so successful deployment alone is insufficient evidence.
+
+For a bounded GET-only smoke test, use one stable public egress IP and the same exact preview/domain throughout: cross the threshold, allow at least 10 seconds for counting/enforcement to catch up, then make one or two additional GETs while still within the 60-second window. A short concurrent burst in which all requests return 200 is inconclusive. Proxy rotation or different domains can create separate counters. Stop when 429 is observed; do not use synthetic POSTs or an unbounded load test. If the accepted rule and delayed 429 cannot be verified, report enforcement as **unverified**, and do not claim a guaranteed abuse or spending cap.
 
 ## Platform references
 

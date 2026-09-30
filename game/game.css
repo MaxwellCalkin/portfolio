@@ -21,3 +21,38 @@
 body[data-effect=damage]:after,body[data-effect=warp]:after,body[data-effect=dash]:after,body[data-effect=upgrade]:after,body[data-effect=recall]:after{content:'';position:fixed;inset:0;pointer-events:none;z-index:2;animation:edge-flash .6s ease-out both;background:radial-gradient(ellipse at center,transparent 50%,#71e9da36)}body[data-effect=damage]:after{background:radial-gradient(ellipse at center,transparent 45%,#f2656555)}body[data-effect=upgrade]:after{background:radial-gradient(ellipse at center,transparent 45%,#e0b16a44)}@keyframes edge-flash{from{opacity:.75}to{opacity:0}}@media(max-width:600px){.world-label{font-size:6px;padding:7px 9px}}
 /* Keep the editorial launch clear of both navigation and telemetry on laptop displays. */
 @media(min-width:851px) and (min-height:501px) and (max-height:740px){.launch{top:100px;bottom:140px}.eyebrow{font-size:7px;line-height:1.5;margin-bottom:14px}.title-small{font-size:34px;margin-bottom:5px}.title-main{font-size:clamp(63px,7.1vw,103px)}.launch-dek{font-size:21px;line-height:1.25;margin:15px 0 9px}.launch-subtitle{font-size:10px;line-height:1.6}.launch-actions{margin-top:18px}.launch-actions .button{min-height:44px;font-size:11px}.launch-note{font-size:6px;line-height:1.5;margin-top:10px;margin-bottom:6px}.intro-footer p{font-size:9px;line-height:1.6}.intro-footer>.tiny{font-size:7px}}
+/* Decorative map rings must never intercept destination clicks. */
+.map-orbit,.map-axis,.map-sun,.map-player{pointer-events:none!important}
+.map-dot{z-index:3}
+.arrow-icon{display:inline-block;width:1em;height:1em;vertical-align:-.12em;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.4}
+/* Preserve translated positioning throughout a real pointer click. */
+.map-dot:active,.world-label:active{transform:translate(-50%,calc(-50% + 1px))}
+@media(min-width:851px){.controls-strip,.controls-strip kbd,.target-label{font-size:10px}.ability strong,.ability-state{font-size:9px}.world-label{font-size:10px}.map-heading>.tiny,.map-footer,.map-dot-label{font-size:9px}}
+body[data-mode=surface].is-playing .scene-vignette{background:linear-gradient(0deg,rgba(3,12,18,.9),rgba(3,12,18,.55) 19%,transparent 41%,transparent 70%,rgba(3,12,18,.54))}
+body[data-mode=surface] .minimap{background:radial-gradient(ellipse,rgba(3,12,18,.64),rgba(3,12,18,.18) 65%,transparent 72%)}
+body[data-mode=surface] .target-label{background:rgba(3,12,18,.72);padding:6px 10px;color:#e1eee8;text-shadow:none}
+body[data-mode=surface] .objective>span:last-child{color:#d0e0dc;text-shadow:0 1px 3px #07151a}
+@media(max-width:600px){
+ .is-playing .abilities{bottom:-31px;gap:5px}
+ .ability{width:104px;min-height:44px;grid-template-columns:22px 1fr}
+ .ability strong{font-size:8px;letter-spacing:0}
+ .ability-state{font-size:9px}
+ .touch-dpad{grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px;gap:5px}
+ .touch-key{min-width:44px;min-height:44px;width:44px;height:44px}
+ .touch-actions{grid-template-columns:44px 56px}
+ .touch-fire{width:56px;height:56px}
+ .vitals{width:158px}
+ .meter-row,.meter-row>b{font-size:8px}
+ .map-heading>.tiny,.map-footer{font-size:7px}
+ .target-label{font-size:9px}
+ .ship-status,.xp-row{font-size:7px}
+}
+/* The drawn reticle shares the exact camera ray used by weapons. */
+.is-playing .crosshair{top:50%}
+.is-playing .target-label{top:calc(50% + 30px)}
+.is-playing .interaction{top:calc(50% + 69px)}
+.featured-projects{display:flex;align-items:center;gap:18px;margin-top:19px;font-size:12px;pointer-events:auto}
+.featured-projects>span{font:8px var(--mono);color:var(--muted);letter-spacing:.08em}
+.featured-projects a{border-bottom:1px solid #8ae8db55;padding:5px 0;color:var(--cream)}
+.featured-projects a span{color:var(--coral);margin-left:4px}
+@media(max-width:600px){.featured-projects{gap:15px;font-size:11px;margin-top:13px}.featured-projects>span{font-size:6px}}
