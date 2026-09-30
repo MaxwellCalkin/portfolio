@@ -7,10 +7,10 @@ const command = (type, details = {}) => window.dispatchEvent(new CustomEvent('ga
 const planetFor = id => PLANETS.find(planet => planet.id === (typeof id === 'object' ? id?.id : id));
 const ARROW = '<svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg>';
 const controlsMarkup = () => `<div class="manual-section"><span class="tiny">01 / AT THE HELM</span><h3>Keep the horizon moving.</h3><div class="controls-grid">${[
-  ['Thrust / brake', 'W / S'], ['Turn left / right', 'A / D'], ['Pitch / climb / descend', '↑ / ↓'], ['Fire ship weapons', 'SPACE / CLICK'], ['Ship boost', 'SHIFT'], ['360° evasive loop · in space', 'Q'],
-].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>Fly straight toward a world to enter its atmosphere. Brake with S, steer over open ground, and descend with ↓. Touchdown is automatic when you are low and slow. Once landed, press E to leave the cockpit.</p><p>To leave a world, walk back to your ship and press E to board. Hold W and ↑ to lift off, then climb above 220 m to return to space. Fly through luminous rings for a boost and watch for hostile ships. Q performs a full evasive loop in space while preserving your forward speed.</p></div><div class="manual-section"><span class="tiny">02 / BOOTS ON THE GROUND</span><h3>Aim with your eyes.</h3><div class="controls-grid">${[
-  ['Walk / strafe', 'W A S D'], ['Look / aim', 'MOUSE'], ['Fire pulse weapon', 'CLICK / SPACE'], ['Vector dash', 'SHIFT'], ['Set anchor / recall', 'Q'], ['Singularity ultimate', 'R'], ['Archive / board / exit ship', 'E'], ['System map / pause', 'M / ESC'],
-].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>On desktop, click the world to capture your mouse. Move the mouse to aim in third person and use WASD to move relative to your view. Escape releases the mouse. Find the glowing archive to read. Defeat each world’s warden to earn the Starforged Explorer title and aurora thrusters.</p><p>On touchscreens, use the movement arrows and drag across the world to aim. Hold the fire button to shoot. The + and − flight buttons climb and descend; tap an ability to activate it.</p></div><p class="fine-print">The map’s Warp buttons are an optional shortcut. Every world can be reached by flying, and every portfolio section can be read from the navigation without combat, scores, or unlocks.</p>`;
+  ['Forward / reverse thrust', 'W / S'], ['Brake to a stop', 'X'], ['Steer / pitch', 'ARROWS / DRAG'], ['Turn left / right', 'A / D'], ['Gentle descent near a planet', 'C'], ['Fire ship weapons', 'SPACE / CLICK'], ['Ship boost', 'SHIFT'], ['360° evasive loop · while flying', 'Q'], ['Open BEACN · near the sun', 'E'], ['Exit ship · once landed', 'E'],
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>W adds forward thrust. S adds reverse thrust: hold it to slow down, pass through a stop, and fly backward. X brakes to a stop. Steer with the arrow keys, A / D, or a mouse or touch drag. ↑ raises the nose and ↓ lowers it.</p><p>Fly directly toward a world and follow its curved surface. Brake with X, then hold C for a gentle descent toward the ground. Touchdown is automatic when you are low and slow. Once landed, press E to leave the cockpit. Space and the planet’s surface are one continuous place: you can fly around the whole world.</p><p>Walk back to your ship and press E to board. Hold W and pitch the nose up with ↑ or a drag to lift off, then keep flying away to return to open space. Fly through luminous rings for a boost. Q performs an evasive loop while airborne and preserves your entry speed. Fly close to the BEACN sun and press E to open <a href="https://beacn.space" target="_blank" rel="noopener noreferrer">beacn.space</a> in a new tab.</p></div><div class="manual-section"><span class="tiny">02 / BOOTS ON THE GROUND</span><h3>Aim with your eyes.</h3><div class="controls-grid">${[
+  ['Walk / strafe', 'W A S D'], ['Look / aim', 'MOUSE'], ['Fire pulse weapon', 'CLICK / SPACE'], ['Vector dash', 'SHIFT'], ['Set anchor / recall', 'Q'], ['Singularity ultimate', 'R'], ['Open archive / board ship', 'E'], ['System map / pause', 'M / ESC'],
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>On desktop, click the world to capture your mouse. Move the mouse to aim in third person and use WASD to move relative to your view. Escape releases the mouse. Find the glowing archive to read. Defeat each world’s warden to earn the Starforged Explorer title and aurora thrusters.</p><p>On touchscreens, use the movement arrows and drag across the world to steer or aim. In the ship, hold BACK for reverse thrust, BRAKE to stop, and DESCEND for a gentle landing. Hold the fire button to shoot; tap an ability to activate it.</p></div><p class="fine-print">The map’s Warp buttons are an optional shortcut. Every world can be reached by flying, and every portfolio section can be read from the navigation without combat, scores, or unlocks.</p>`;
 
 export function initUI() {
   const byId = id => document.getElementById(id);
@@ -105,7 +105,7 @@ export function initUI() {
       dialogContent.innerHTML = `<h2 id="dialog-title">${content.title}</h2><p class="dialog-lede">${content.lede}</p>${content.html}<div class="dialog-actions"><button class="button button-ghost" data-warp="${id}">Explore this world <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><button class="button button-ghost" data-close>Return to universe</button></div>`;
     } else if (id === 'map') {
       text('dialog-eyebrow', 'NAVIGATION / FIVE WORLDS');
-      dialogContent.innerHTML = `<h2 id="dialog-title">Chart your<br>own course.</h2><p class="dialog-lede">Five worlds orbit BEACN. Fly your own approach, or take a shortcut.</p><ul class="map-destinations">${PLANETS.map(planet => `<li style="--planet-color:${planet.color}"><span class="planet-avatar" aria-hidden="true"></span><div><h3>${planet.name}</h3><p>${planet.description}</p><span class="tiny">${planet.terrain.toUpperCase()}${state.defeatedBosses?.includes(planet.id) ? ' / WARDEN DEFEATED' : state.visited?.includes(planet.id) ? ' / VISITED' : ''}</span></div><button class="warp-button" data-warp="${planet.id}" aria-label="Warp to ${planet.name}">WARP <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></li>`).join('')}</ul><div class="system-projects"><a href="https://beacn.space" target="_blank" rel="noopener noreferrer"><span class="tiny">THE CENTRAL SUN</span><strong>BEACN ${ARROW}</strong></a><a href="https://heard-us.vercel.app" target="_blank" rel="noopener noreferrer"><span class="tiny">FEATURED PROJECT</span><strong>Heard Us ${ARROW}</strong></a></div><p class="fine-print">Warp is an optional shortcut to a world’s surface. To land manually, fly toward a planet, brake in its atmosphere, and descend until touchdown. Open any portfolio section from the navigation at any time.</p>`;
+      dialogContent.innerHTML = `<h2 id="dialog-title">Chart your<br>own course.</h2><p class="dialog-lede">Five worlds orbit BEACN. Fly your own approach, or take a shortcut.</p><ul class="map-destinations">${PLANETS.map(planet => `<li style="--planet-color:${planet.color}"><span class="planet-avatar" aria-hidden="true"></span><div><h3>${planet.name}</h3><p>${planet.description}</p><span class="tiny">${planet.terrain.toUpperCase()}${state.defeatedBosses?.includes(planet.id) ? ' / WARDEN DEFEATED' : state.visited?.includes(planet.id) ? ' / VISITED' : ''}</span></div><button class="warp-button" data-warp="${planet.id}" aria-label="Warp to ${planet.name}">WARP <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></li>`).join('')}</ul><div class="system-projects"><a href="https://beacn.space" target="_blank" rel="noopener noreferrer"><span class="tiny">THE CENTRAL SUN</span><strong>BEACN ${ARROW}</strong></a><a href="https://heard-us.vercel.app" target="_blank" rel="noopener noreferrer"><span class="tiny">FEATURED PROJECT</span><strong>Heard Us ${ARROW}</strong></a></div><p class="fine-print">Warp is an optional shortcut to a world’s surface. To land manually, fly toward a planet, brake with X, and hold C to descend gently until touchdown. Near the BEACN sun, press E to open its project in a new tab. Open any portfolio section from the navigation at any time.</p>`;
     } else if (id === 'achievement') {
       renderAchievement(true);
     } else if (id === 'controls') {
@@ -206,13 +206,22 @@ export function initUI() {
     if (nextContext !== controlContext) {
       controlContext = nextContext;
       const hints = document.querySelector('.controls-strip');
-      hints.children[0].innerHTML = onFoot ? '<kbd>W</kbd><kbd>S</kbd> MOVE' : '<kbd>W</kbd><kbd>S</kbd> THRUST / BRAKE';
-      hints.children[1].innerHTML = onFoot ? '<kbd>A</kbd><kbd>D</kbd> STRAFE' : '<kbd>A</kbd><kbd>D</kbd> STEER';
-      byId('context-control').innerHTML = onFoot ? 'MOUSE LOOK · ESC RELEASES' : '<kbd>↑</kbd><kbd>↓</kbd> CLIMB / DESCEND';
+      hints.children[0].innerHTML = onFoot ? '<kbd>W</kbd><kbd>S</kbd> MOVE' : '<kbd>W</kbd> FORWARD <kbd>S</kbd> REVERSE';
+      hints.children[1].innerHTML = onFoot ? '<kbd>A</kbd><kbd>D</kbd> STRAFE' : '<kbd>↑↓←→</kbd> STEER';
+      byId('context-control').innerHTML = onFoot ? 'MOUSE LOOK · ESC RELEASES' : '<kbd>X</kbd> BRAKE <kbd>C</kbd> DESCEND';
+      document.querySelector('.touch-up').setAttribute('aria-label', onFoot ? 'Move forward' : 'Forward thrust, W');
+      document.querySelector('.touch-down').setAttribute('aria-label', onFoot ? 'Move backward' : 'Reverse thrust, S');
+      document.querySelector('.touch-left').setAttribute('aria-label', onFoot ? 'Strafe left' : 'Steer left, A');
+      document.querySelector('.touch-right').setAttribute('aria-label', onFoot ? 'Strafe right' : 'Steer right, D');
     }
-    text('mode-label', onFoot ? 'SURFACE EXPLORER' : atmosphericFlight ? state.landed ? 'SHIP LANDED' : 'ATMOSPHERIC FLIGHT' : 'ORBITAL EXPLORER');
+    text('mode-label', onFoot ? 'SURFACE EXPLORER' : atmosphericFlight ? state.settling ? 'LANDING GEAR SETTLING' : state.landed ? 'SHIP LANDED' : 'ATMOSPHERIC FLIGHT' : 'ORBITAL EXPLORER');
     text('health-label', onFoot ? 'VITALS' : 'HULL');
-    byId('speed-value').innerHTML = `${String(Math.abs(Math.round(state.speed || 0))).padStart(3, '0')} <small>M/S</small>`;
+    const speed = Number.isFinite(Number(state.speed)) ? Number(state.speed) : 0;
+    const roundedSpeed = Math.round(speed);
+    const reversing = !onFoot && speed < -0.5;
+    byId('speed-value').innerHTML = `${reversing ? '−' : ''}${String(Math.abs(roundedSpeed)).padStart(3, '0')} <small>M/S</small>`;
+    byId('speed-value').setAttribute('aria-label', `${Math.abs(roundedSpeed)} meters per second${reversing ? ', reverse' : ''}`);
+    byId('speed-value').title = reversing ? 'Reverse velocity' : 'Forward velocity';
     byId('flight-telemetry').hidden = onFoot;
     text('altitude-label', atmosphericFlight ? `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE` : 'DEEP SPACE');
     text('flight-activity', state.spaceEnemies > 0 && inSpace ? `${state.spaceEnemies} HOSTILES · ${state.ringCount || 0} RINGS` : `${state.ringCount || 0} RINGS`);
@@ -221,9 +230,9 @@ export function initUI() {
     text('dash-state', onFoot ? state.dashCooldown > 0 ? `${Math.ceil(state.dashCooldown)}s` : 'READY' : state.boostActive ? 'BOOSTING' : 'READY');
     byId('dash-button').setAttribute('aria-label', onFoot ? 'Vector dash, Shift' : 'Ship boost, Shift');
     text('recall-name', onFoot ? 'TEMPORAL ANCHOR' : 'EVASIVE LOOP');
-    text('recall-state', onFoot ? state.recallActive ? `RECALL ${state.recallRemaining || ''}` : state.recallCooldown > 0 ? `${Math.ceil(state.recallCooldown)}s` : 'SET ANCHOR' : atmosphericFlight ? 'SPACE ONLY' : state.loopCooldown > 0 ? `${Math.ceil(state.loopCooldown)}s` : '360° · READY');
-    byId('recall-button').disabled = atmosphericFlight;
-    byId('recall-button').setAttribute('aria-label', onFoot ? 'Set temporal anchor or recall, Q' : atmosphericFlight ? 'Evasive loop available in space' : '360 degree evasive loop, Q');
+    text('recall-state', onFoot ? state.recallActive ? `RECALL ${state.recallRemaining || ''}` : state.recallCooldown > 0 ? `${Math.ceil(state.recallCooldown)}s` : 'SET ANCHOR' : state.landed ? 'AIRBORNE ONLY' : state.loopCooldown > 0 ? `${Math.ceil(state.loopCooldown)}s` : '360° · READY');
+    byId('recall-button').disabled = !onFoot && Boolean(state.landed);
+    byId('recall-button').setAttribute('aria-label', onFoot ? 'Set temporal anchor or recall, Q' : state.landed ? 'Evasive loop available while airborne' : '360 degree evasive loop, Q');
     byId('ultimate-button').disabled = !onFoot;
     byId('ultimate-button').title = onFoot ? 'Singularity · R' : 'Singularity is available on foot';
     text('ultimate-state', !onFoot ? 'ON FOOT ONLY' : state.ultimate >= 100 ? 'READY' : `${Math.floor(clamp(state.ultimate))}%`);
@@ -253,23 +262,31 @@ export function initUI() {
     const near = planetFor(state.nearPlanet);
     const approach = planetFor(state.approachingPlanet);
     const target = planetFor(state.targetPlanet?.id || state.targetPlanet);
-    if (onFoot) {
+    const nearBeacn = Boolean(state.vehicle) && state.nearProject === 'beacn';
+    if (nearBeacn) {
+      text('objective-title', 'BEACN / The central sun');
+      text('objective-detail', 'Press E to open beacn.space in a new tab');
+      text('target-label', 'BEACN IN RANGE · E TO OPEN');
+    } else if (onFoot) {
       text('objective-title', `${p?.name || 'World'} / ${bossVisible ? 'World warden' : 'Archive signal'}`);
       text('objective-detail', state.canInteract ? 'Press E to open the archive' : state.canEmbark ? 'Press E to board your ship' : bossVisible ? 'Keep moving. Defeat the warden, or explore the archive.' : 'Find the glowing archive. Explore at your own pace.');
       text('target-label', state.canInteract ? 'ARCHIVE IN RANGE' : state.canEmbark ? 'SHIP IN RANGE · E TO BOARD' : `${p?.title || 'SURFACE'} · ${state.weaponName || 'PULSE I'}`);
     } else if (atmosphericFlight) {
       text('objective-title', `${p?.name || 'World'} / ${state.landed ? 'Touchdown' : 'Atmospheric approach'}`);
-      text('objective-detail', state.landed ? 'E to exit ship · W + ↑ to take off' : 'S to brake · ↓ to descend · land low and slow');
-      text('target-label', state.landed ? 'LANDED · E TO EXIT SHIP' : `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE · CLIMB ABOVE 220 M TO LEAVE`);
+      text('objective-detail', state.settling ? 'Landing gear settling · Hold position' : state.landed ? 'E to exit ship · W + ↑ to take off' : 'X to brake · C to descend gently · S to reverse');
+      text('target-label', state.settling ? 'SETTLING ON THE TERRAIN' : state.landed ? 'LANDED · E TO EXIT SHIP' : `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE · FOLLOW THE CURVED HORIZON`);
     } else {
       text('objective-title', approach ? `${approach.name} / Approach` : state.spaceEnemies > 0 ? 'Hostile ships on your route' : visited.length === 5 ? 'A universe well explored' : 'Explore the five worlds');
-      text('objective-detail', approach ? 'Keep flying toward the world to enter its atmosphere' : state.spaceEnemies > 0 ? 'Aim and fire · Shift to boost · Q for an evasive loop' : 'Fly toward a world. Follow its approach signal.');
+      text('objective-detail', approach ? 'Fly toward the curved horizon · X to brake · C to descend' : state.spaceEnemies > 0 ? 'Aim and fire · Shift to boost · Q for an evasive loop' : 'Fly toward a world. Follow its approach signal.');
       text('target-label', target ? `NEAREST · ${target.name} / ${Math.round(state.targetPlanet?.distance || 0)} M${state.targetPlanet?.behind ? ' · BEHIND' : ''}` : near ? `${near.name} / ${Math.round(state.nearestDistance || 0)} M` : 'FOLLOW A SIGNAL');
     }
-    const canInteract = atmosphericFlight ? Boolean(state.landed) : onFoot && Boolean(state.canInteract || state.canEmbark);
+    const canInteract = nearBeacn || (!onFoot && Boolean(state.landed) && !state.settling) || (onFoot && Boolean(state.canInteract || state.canEmbark));
     byId('interaction').hidden = !canInteract;
-    text('interact-label', atmosphericFlight ? 'Exit ship' : state.canInteract ? 'Open the archive' : 'Board ship');
-    const mapPosition = state.mode === 'surface' && p ? { x: p.position[0], z: p.position[2] } : state.position || { x: 0, z: 120 };
+    const interactLabel = nearBeacn ? 'Open BEACN' : !onFoot ? 'Exit ship' : state.canInteract ? 'Open the archive' : 'Board ship';
+    text('interact-label', interactLabel);
+    byId('interact-button').setAttribute('aria-label', `E · ${interactLabel}${nearBeacn ? ', opens in a new tab' : ''}`);
+    document.querySelector('.touch-actions [data-command=interact]').setAttribute('aria-label', canInteract ? `${interactLabel}${nearBeacn ? ', opens in a new tab' : ''}` : 'Interact, E');
+    const mapPosition = state.position || { x: 0, z: 120 };
     byId('map-player').style.left = `${clamp(50 + mapPosition.x / 42, 3, 97)}%`;
     byId('map-player').style.top = `${clamp(50 + mapPosition.z / 49, 3, 97)}%`;
     const soundButton = byId('sound-toggle');

@@ -15,7 +15,7 @@ test('ground clicks fire, mouse aims, collision blocks ship, and modals close',a
  const canvas=page.locator('#game-canvas');await page.mouse.move(620,380);await page.waitForTimeout(120);const heading=(await state(page)).heading;await page.mouse.move(680,390,{steps:4});await expect.poll(async()=>(await state(page)).heading).not.toBe(heading);
  await page.mouse.click(680,390);await expect.poll(async()=>Number(await canvas.getAttribute('data-shots-fired'))).toBeGreaterThan(0);
  await page.keyboard.press('Escape');await page.getByRole('button',{name:'Resume expedition'}).click();await page.locator('.map-dot[data-planet="philosophy"]').click();
- await page.keyboard.down('s');await page.waitForTimeout(1800);await page.keyboard.up('s');expect((await state(page)).position.z).toBeLessThan(25);
+ await page.keyboard.down('s');await page.waitForTimeout(1800);await page.keyboard.up('s');const position=(await state(page)).position;const hull=JSON.parse(await canvas.getAttribute('data-ship-position'));expect(Math.hypot(position.x-hull[0],position.y-hull[1],position.z-hull[2])).toBeGreaterThan(3.5);
  await page.getByRole('link',{name:'Projects',exact:true}).click();await expect(page.locator('#dialog-content')).toContainText('BEACN');await expect(page.locator('#dialog-content')).toContainText('Heard Us');
  await expect(page.getByRole('button',{name:'Close panel'})).not.toContainText('CLOSE');await page.getByRole('button',{name:'Close panel'}).click();await expect(page.locator('#portfolio-dialog')).not.toBeVisible();expect(errors).toEqual([]);
 });

@@ -63,14 +63,14 @@ function planetMaterial(base, seed, giant = false) {
     uniforms: { uColor: { value: color(base) }, uSeed: { value: seed }, uGiant: { value: giant ? 1 : 0 }, uTime: { value: 0 } },
     vertexShader: planetVertex,
     fragmentShader: `uniform vec3 uColor;uniform float uSeed,uGiant,uTime;varying vec3 vPosition,vNormal,vWorld;${noiseGLSL}
-    void main(){vec3 p=normalize(vPosition);vec3 q=p*4.2+uSeed;float continents=fbm(q+fbm(q*1.7));float ridges=fbm(p*22.+uSeed);float fine=noise(p*115.+uSeed);
+    void main(){float closeView=1.-smoothstep(60.,180.,distance(cameraPosition,vWorld));vec3 p=normalize(vPosition);vec3 q=p*4.2+uSeed;float continents=fbm(q+fbm(q*1.7));float ridges=fbm(p*22.+uSeed);float fine=noise(p*115.+uSeed);
     vec3 ocean=mix(vec3(.012,.032,.046),uColor*.24,.6); vec3 land=mix(uColor*.36,uColor*1.1,smoothstep(.39,.73,continents));
     float edges=smoothstep(.44,.50,continents);vec3 albedo=mix(ocean,land,edges);albedo*=.72+.42*ridges+.14*fine;
-    float cloud=fbm(p*6.+vec3(uSeed,uTime*.008,0.)+fbm(p*11.));float cloudMask=smoothstep(.57,.71,cloud);albedo=mix(albedo,mix(uColor,vec3(1.),.83),cloudMask*.88);
+    float cloud=fbm(p*6.+vec3(uSeed,uTime*.008,0.)+fbm(p*11.));float cloudMask=smoothstep(.57,.71,cloud);albedo=mix(albedo,mix(uColor,vec3(1.),.83),cloudMask*.88*(1.-closeView*.8));
     if(uGiant>.5){float bands=sin(p.y*46.+fbm(p*7.)*14.);albedo=mix(uColor*.23,uColor*1.2,bands*.5+.5);albedo=mix(albedo,vec3(.92,.79,.66),smoothstep(.67,.9,fbm(p*10.))*.6);}
     vec3 n=normalize(vNormal),l=normalize(vec3(-.65,.6,.55)),v=normalize(cameraPosition-vWorld);float daylight=max(dot(n,l),0.);float twilight=smoothstep(-.3,.4,dot(n,l));
-    vec3 lit=albedo*(.07+.92*daylight);float spec=pow(max(dot(reflect(-l,n),v),0.),40.)*(1.-edges);lit+=vec3(.52,.71,.73)*spec*.28;
-    float rim=pow(1.-max(dot(n,v),0.),3.);lit+=uColor*rim*.36*twilight;float city=step(.82,noise(p*245.))*step(.53,continents)*(1.-twilight);lit+=vec3(1.,.43,.12)*city*.22;
+    vec3 surveyGround=mix(uColor*.38,uColor*.76,.5+.5*noise(vPosition*.6+uSeed));albedo=mix(albedo,surveyGround,closeView*.7);vec3 lit=albedo*(.07+.92*daylight+closeView*.38);float spec=pow(max(dot(reflect(-l,n),v),0.),40.)*(1.-edges);lit+=vec3(.52,.71,.73)*spec*.28;
+    float rim=pow(1.-max(dot(n,v),0.),3.);lit+=uColor*rim*.36*twilight;float city=step(.82,noise(p*245.))*step(.53,continents)*(1.-twilight);lit+=vec3(1.,.43,.12)*city*.22*(1.-closeView);
     gl_FragColor=vec4(lit,1.);#include <tonemapping_fragment>\n#include <colorspace_fragment>}`.replace(';}#', ';}\n#').replace(';#include', ';\n#include'),
   });
 }
@@ -139,7 +139,7 @@ export function createSpaceWorld(scene) {
   const rnd=random(928),rockGeo=new THREE.IcosahedronGeometry(1,0),rockMat=standard('#536167',.95,.25);
   const debris=new THREE.InstancedMesh(rockGeo,rockMat,140); const dummy=new THREE.Object3D();
   for(let i=0;i<140;i++){let a=rnd()*TAU,r=670+rnd()*260;dummy.position.set(Math.cos(a)*r,(rnd()-.5)*140-140,Math.sin(a)*r);dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);dummy.scale.set(1+rnd()*5,1+rnd()*3,1+rnd()*4);dummy.updateMatrix();debris.setMatrixAt(i,dummy.matrix);}group.add(debris);
-  return {group,planets,update(time,dt){stars.material.uniforms.uTime.value=time;for(let i=0;i<planets.length;i++){planets[i].mesh.rotation.y+=dt*.014*(i%2?-1:1);planets[i].mesh.material.uniforms.uTime.value=time;}},dispose(){disposeGroup(group);}};
+  return {group,planets,update(time,dt){stars.material.uniforms.uTime.value=time;for(let i=0;i<planets.length;i++){planets[i].mesh.material.uniforms.uTime.value=time;}},dispose(){disposeGroup(group);}};
 }
 
 function loft(profiles, sides = 8) {

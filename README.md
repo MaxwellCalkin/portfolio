@@ -23,15 +23,16 @@ The Netlify function runs on Netlify (or with Netlify Dev). Plain Vite and non-N
 
 ## Explore
 
-- W / S: ship thrust or forward/back on foot
+- W / S: forward / reverse ship thrust, or forward / back on foot
+- X: brake the ship to a stop; C: gentle radial descent near a planet
 - A / D: turn the ship or strafe on foot
 - Mouse/touch drag or arrow keys: steer / aim
 - Left mouse or Space: fire
 - Shift: ship boost / on-foot vector dash
-- Manual landing: fly into a planet’s atmosphere, steer the descent, brake with S and lower the nose with ArrowDown; touchdown is automatic
-- E: exit a landed ship, access an archive beacon, or board the ship
-- Takeoff: W + ArrowUp; climb above 220m to return to space
-- Q: on foot, set/recall a temporal anchor; in space, perform a full 360° Evasive Loop with entry speed conserved
+- Manual landing: fly to the real spherical terrain, brake with X, and use C for the final controlled descent; touchdown is automatic
+- E: open BEACN when near its central landmark; otherwise exit a landed ship, access an archive beacon, or board the ship
+- Takeoff: W + ArrowUp; fly straight toward another visible planet without a scene change
+- Q: on foot, set/recall a temporal anchor; while flying, perform a full 360° Evasive Loop with signed entry speed conserved
 - R: charged singularity ultimate, available on planetary surfaces
 - M: system map and instant planet warp
 - Escape: close an open panel or open settings / pause
@@ -42,13 +43,17 @@ Touch movement, fire, dash, interaction, and abilities have on-screen controls. 
 
 Five explorable worlds represent Philosophy, Experience, Projects, Mission, and Contact. Orbital flight includes twelve dogfighting opponents, fourteen boost gates, the BEACN logo-inspired central monument, and a Heard Us beacon. The solar system is spaced farther apart for free flight. Planetary sentinels arrive in escalating waves. Combat earns XP; weapons evolve at 120, 320, and 680 XP into faster multi-bolt attacks. The ultimate starts charged so visitors can experience it immediately, then recharges through combat. Damage consumes shields before health; shields regenerate after a quiet interval. Every world has a distinct animated warden alongside three ordinary enemy species. Defeating all five wardens earns the Starforged Explorer title and permanent device-local aurora thrusters. Defeated explorers can save their run and redeploy.
 
-Orbital approach streams into a manually flyable local biome. This is a connected flight-to-ground experience with an atmospheric transition; terrain maps are bounded, rather than fully spherical planets that can be circumnavigated.
+The entire solar system is one persistent 3D world. Every planet is a closed, walkable spherical terrain mesh at its actual orbital coordinates. Flight, landing, walking and takeoff share that mesh and coordinate system; altitude changes never load a replacement scene, teleport the ship or reset its heading. The other planets and project landmarks remain at their real positions in the sky. The minimap is an explicitly optional warp shortcut.
 
 ## Files
 
 - `game/main.js`: simulation, controls, combat, state, lifecycle
 - `game/world.js`: procedural worlds, ship, and physical terrain/obstacle registration
-- `game/collision.js`: swept character collision, sliding, mesh-accurate ground heights
+- `game/spherical-terrain.js`: closed spherical geometry and exact rendered-triangle ground sampling
+- `game/planet-surfaces.js`: persistent radial scenery and swept 3D obstacle collision
+- `game/continuous-flight.js`: quaternion flight, signed momentum, landing/takeoff and terrain sweeps
+- `game/terrain-occlusion.js`: earliest swept terrain contact for weapon occlusion
+- `game/collision.js`: legacy planar collision helpers retained for their tests
 - `game/hero-explorer.js`: original Kestrel / 07 hero, articulated locomotion, two-handed rifle IK
 - `game/chase-camera.js`: rigid ship-frame camera that follows the complete evasive loop
 - `game/creatures.js`: three sculpted alien species and five unique bosses

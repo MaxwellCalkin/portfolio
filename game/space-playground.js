@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PLANETS } from './world.js';
+import { earliestTerrainHit } from './terrain-occlusion.js';
 
 // Original, asset-free flight playground. All ships face local -Z.
 const TAU = Math.PI * 2;
@@ -213,6 +214,7 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
   const assets = createAssets(), enemies = [], rings = [], bolts = [], sparks = [];
   const playerPrevious = new THREE.Vector3(), playerVelocity = new THREE.Vector3();
   let hasPlayerPrevious = false, disposed = false, elapsed = 0;
+  let terrainSurfaces = null;
   const to = new THREE.Vector3(), target = new THREE.Vector3(), desired = new THREE.Vector3();
   const next = new THREE.Vector3(), normal = new THREE.Vector3(), lead = new THREE.Vector3();
   const facing = new THREE.Quaternion();
@@ -314,7 +316,8 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
 
   function tryHitSegment(start, end, damage = 30) {
     if (disposed) return false;
-    let earliest = Infinity, hit = null;
+    const terrainHit = terrainSurfaces ? earliestTerrainHit(start, end, terrainSurfaces) : null;
+    let earliest = terrainHit?.t ?? Infinity, hit = null;
     for (const enemy of enemies) {
       if (!enemy.alive) continue;
       const t = segmentSphereHitTime(start,end,enemy.mesh.position,enemy.radius);
@@ -423,16 +426,19 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
     for (const bolt of bolts) {
       if (bolt.life <= 0) continue;
       bolt.previous.copy(bolt.mesh.position); bolt.mesh.position.addScaledVector(bolt.velocity,dt); bolt.life -= dt;
+      const terrainHit = terrainSurfaces ? earliestTerrainHit(bolt.previous, bolt.mesh.position, terrainSurfaces) : null;
       let hit = false;
       if (bolt.hostile) {
         // Relative-motion sweep prevents high-speed player/bolt tunnelling.
         target.copy(bolt.previous).sub(continuous ? playerPrevious : playerPosition);
         next.copy(bolt.mesh.position).sub(playerPosition);
-        if (segmentSphereHitTime(target,next,ZERO,5.6) !== null) {
+        const playerHitTime = segmentSphereHitTime(target,next,ZERO,5.6);
+        if (playerHitTime !== null && playerHitTime < (terrainHit?.t ?? Infinity)) {
           onPlayerDamage(bolt.damage); hit = true; burst(bolt.mesh.position,4,17);
         }
       } else hit = tryHitSegment(bolt.previous,bolt.mesh.position,bolt.damage);
-      if (!hit) for (const obstacle of obstacles) {
+      if (!hit && terrainHit) { hit = true; bolt.mesh.position.copy(terrainHit.point); }
+      if (!hit && !terrainSurfaces) for (const obstacle of obstacles) {
         if (segmentSphereHitTime(bolt.previous,bolt.mesh.position,obstacle.position,obstacle.radius) !== null) { hit = true; break; }
       }
       if (hit || bolt.life <= 0) { bolt.life = 0; bolt.mesh.visible = false; }
@@ -480,6 +486,7 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
   }
 
   return { group, enemies, rings, update, tryHitSegment, nearestEnemy, reset, dispose,
+    setSurfaces(surfaces) { terrainSurfaces = surfaces == null ? null : Array.from(surfaces instanceof Map ? surfaces.values() : surfaces); },
     shoot(origin,direction,damage=30) { return launch(origin,direction,false,damage); },
     clearProjectiles() { hasPlayerPrevious = false; for (const bolt of bolts) { bolt.life=0; bolt.mesh.visible=false; } },
   };
