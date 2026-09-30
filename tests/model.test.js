@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {weaponForXP,levelForXP,hitSegmentSphere,sanitizeName,loadScores,saveScore,applyDamage,sortedScores} from '../game/model.js';
+test('weapons upgrade at earned XP thresholds',()=>{assert.equal(levelForXP(119),1);assert.equal(levelForXP(120),2);assert.equal(levelForXP(320),3);assert.equal(levelForXP(680),4);assert.equal(weaponForXP(9999).bolts,3)});
+test('swept collision catches fast projectiles',()=>{assert.equal(hitSegmentSphere({x:0,y:0,z:0},{x:20,y:0,z:0},{x:10,y:0,z:0},1),true);assert.equal(hitSegmentSphere({x:0,y:0,z:0},{x:20,y:0,z:0},{x:10,y:4,z:0},1),false)});
+test('shield takes damage before health',()=>{const s={shield:20,health:100};assert.equal(applyDamage(s,35),false);assert.deepEqual(s,{shield:0,health:85});assert.equal(applyDamage(s,100),true)});
+test('leaderboard input is bounded and cannot carry markup',()=>{assert.equal(sanitizeName('<script>hi</script>'),'scripthiscript');assert.equal(sanitizeName(' '.repeat(50)),'Explorer');assert.equal(sanitizeName('x'.repeat(99)).length,20)});
+test('corrupt or unavailable local storage is safe',()=>{assert.deepEqual(loadScores({getItem:()=>'{broken'}),[]);assert.deepEqual(loadScores({getItem:()=>'{"a":1}'}),[]);const r=saveScore({setItem:()=>{throw Error()}},[],{name:'Player',score:100,kills:1,level:1,date:'2026'});assert.equal(r.persisted,false);assert.equal(r.rows.length,1)});
+test('local scores sort, validate, and persist',()=>{let value;const storage={setItem:(k,v)=>value=v,getItem:()=>value};const row={name:'A',score:100,kills:1,level:1,date:'2026'};saveScore(storage,[],row);assert.equal(loadScores(storage)[0].score,100);assert.equal(sortedScores([row,{...row,score:NaN},{...row,score:200}])[0].score,200)});
+import {registerBossDefeat,campaignComplete} from '../game/model.js';
+test('all-boss achievement requires five distinct real worlds',()=>{let defeated=[];for(const id of ['philosophy','experience','projects','mission'])defeated=registerBossDefeat(defeated,id);assert.equal(campaignComplete(defeated),false);assert.equal(registerBossDefeat(defeated,'mission').length,4);assert.equal(registerBossDefeat(defeated,'fake').length,4);defeated=registerBossDefeat(defeated,'contact');assert.equal(campaignComplete(defeated),true)});
