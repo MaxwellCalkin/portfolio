@@ -26,6 +26,10 @@ export function initUI() {
   let leaderboardSignature = '';
   let achievementSignature = '';
   let controlContext = '';
+  let restartPending = false;
+  let deathLatched = false;
+  const isDead = () => Boolean(state.started && state.health <= 0);
+  const isDeathLocked = () => deathLatched || isDead();
   const defeatedWorlds = () => PLANETS.filter(planet => state.defeatedBosses?.includes(planet.id));
   const achievementEarned = () => state.achievement === 'Starforged Explorer';
   const text = (id, value) => { const node = byId(id); if (node && node.textContent !== String(value)) node.textContent = value; };
@@ -44,7 +48,7 @@ export function initUI() {
     label.className = `map-dot-label ${planet.position[0] > 100 ? 'left' : ''}`;
     label.textContent = planet.number;
     button.append(label);
-    button.addEventListener('click', () => { if (!ready) return; closePanel(); command('warp', { planet: planet.id }); });
+    button.addEventListener('click', () => { if (!ready || isDeathLocked()) return; closePanel(); command('warp', { planet: planet.id }); });
     byId('minimap').append(button);
   });
 
@@ -57,18 +61,30 @@ export function initUI() {
     toastTimeout = setTimeout(() => { toast.classList.remove('is-visible'); document.body.classList.remove('has-toast'); }, 4200);
   }
 
-  function closePanel() {
-    if (!dialog.open) return;
-    dialog.close();
+  function closePanel(force = false) {
+    // A forced close is reserved for restarting. The dialog's close event is
+    // asynchronous, so retain this guard until the fresh run reaches update().
+    if (force === true) restartPending = true;
+    else if (isDeathLocked()) { openPanel('death'); return false; }
+    if (dialog.open) dialog.close();
+    return true;
   }
 
-  function scoreMarkup() {
+  function scoreMarkup(death = false) {
     const global = state.leaderboardMode === 'global';
-    return `<h2 id="dialog-title">${global ? 'A shared<br>flight log.' : 'Leave a<br>flight record.'}</h2><p class="dialog-lede">${global ? 'Community leaderboard' : 'Your expeditions, on this device.'}</p><p class="fine-print" id="leaderboard-disclosure">${global ? 'Your callsign and score will be public. Casual leaderboard; scores are not cheat-proof.' : 'THIS DEVICE ONLY · Records are saved in this browser. This is a local leaderboard, not a global ranking. Clearing browser storage removes saved records.'}</p><div id="leaderboard-results" aria-live="polite"></div><form class="score-form" id="score-form"><label for="pilot-name">YOUR CALLSIGN</label><input id="pilot-name" name="callsign" maxlength="20" autocomplete="nickname" placeholder="Anonymous explorer" aria-describedby="leaderboard-disclosure"><button class="button button-primary" id="save-score-button" type="submit">${global ? 'Publish score' : 'Save run'} <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></form><p class="fine-print" id="leaderboard-notice" role="status"></p><div class="dialog-actions"><button class="button button-ghost" data-command="restart">Restart expedition <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><button class="button button-ghost" data-close>Return to exploring</button></div>`;
+    const heading = death
+      ? `<h2 id="dialog-title">Expedition<br>ended.</h2><p class="dialog-lede" id="death-description">Your journey ends here. Restart your expedition to fly again, or save this run first.</p><div class="death-summary" aria-label="Final expedition results"><span><small>FINAL SCORE</small><strong id="death-score">${Math.max(0, Math.round(state.score || 0)).toLocaleString()}</strong></span><span><small>LEVEL REACHED</small><strong>${Math.max(1, Math.floor(state.level || 1))}</strong></span><span><small>ANOMALIES CLEARED</small><strong>${Math.max(0, Math.floor(state.kills || 0))}</strong></span></div><h3>Keep a flight record.</h3>`
+      : `<h2 id="dialog-title">${global ? 'A shared<br>flight log.' : 'Leave a<br>flight record.'}</h2><p class="dialog-lede">${global ? 'Community leaderboard' : 'Your expeditions, on this device.'}</p>`;
+    const disclosure = `<p class="fine-print" id="leaderboard-disclosure">${global ? 'Your callsign and score will be public. Casual leaderboard; scores are not cheat-proof.' : 'THIS DEVICE ONLY · Records are saved in this browser. This is a local leaderboard, not a global ranking. Clearing browser storage removes saved records.'}</p>`;
+    const form = `<form class="score-form" id="score-form"><label for="pilot-name">YOUR CALLSIGN</label><input id="pilot-name" name="callsign" maxlength="20" autocomplete="nickname" placeholder="Anonymous explorer" aria-describedby="leaderboard-disclosure"><button class="button button-primary" id="save-score-button" type="submit">${global ? 'Publish score' : 'Save run'} <span aria-hidden="true">${ARROW}</span></button></form><p class="fine-print" id="leaderboard-notice" role="status"></p>`;
+    const results = '<div id="leaderboard-results" aria-live="polite"></div>';
+    const actions = `<div class="dialog-actions"><button class="button button-ghost" data-command="restart">Restart expedition <span aria-hidden="true">${ARROW}</span></button><button class="button button-ghost" data-close>Return to exploring</button></div>`;
+    return heading + disclosure + (death ? form + results : results + form + actions);
   }
 
   function renderScores(force = false) {
-    if (activePanel !== 'scores' && activePanel !== 'leaderboard') return;
+    if (!['scores', 'leaderboard', 'death'].includes(activePanel)) return;
+    text('death-score', Math.max(0, Math.round(state.score || 0)).toLocaleString());
     const rows = Array.isArray(state.leaderboard) ? state.leaderboard : [];
     const signature = JSON.stringify([rows, state.leaderboardLoading, state.leaderboardNotice, state.score, state.leaderboardMode]);
     if (!force && signature === leaderboardSignature) return;
@@ -93,12 +109,32 @@ export function initUI() {
   }
 
   function openPanel(id) {
+    // Engine-triggered death is immediate, even before its next UI snapshot.
+    if (id === 'death') deathLatched = true;
+    if (isDeathLocked()) {
+      if (restartPending) return;
+      id = 'death';
+    }
     if (id === 'leaderboard') id = 'scores';
-    if (!CONTENT[id] && !['map', 'pause', 'controls', 'scores', 'achievement'].includes(id)) return;
+    if (!CONTENT[id] && !['map', 'pause', 'controls', 'scores', 'achievement', 'death'].includes(id)) return;
+    // Keep a typed callsign and current focus intact when blocked navigation
+    // or repeated state updates try to open the death screen again.
+    if (id === 'death' && activePanel === 'death' && dialog.open) return;
     const wasOpen = dialog.open;
     if (!wasOpen) returnFocus = document.activeElement;
     activePanel = id;
     dialog.dataset.panel = id;
+    const death = id === 'death';
+    byId('close-dialog').hidden = death;
+    byId('close-dialog').disabled = death;
+    byId('death-restart').hidden = !death;
+    if (death) {
+      dialog.setAttribute('closedby', 'none');
+      dialog.setAttribute('aria-describedby', 'death-description');
+    } else {
+      dialog.removeAttribute('closedby');
+      dialog.removeAttribute('aria-describedby');
+    }
     const content = CONTENT[id];
     if (content) {
       text('dialog-eyebrow', content.eyebrow);
@@ -114,17 +150,21 @@ export function initUI() {
     } else if (id === 'pause') {
       text('dialog-eyebrow', 'MISSION CONTROL / SETTINGS');
       dialogContent.innerHTML = `<h2 id="dialog-title">A moment<br>of stillness.</h2><p class="dialog-lede">Take your time. The universe can wait.</p><div class="settings-list"><label class="setting"><span>Sound<small>Procedural flight, weapon, and ability audio.</small></span><input id="setting-sound" type="checkbox" ${state.sound ? 'checked' : ''}></label><label class="setting"><span>Reduced motion<small>Less camera movement, flashes, and visual effects.</small></span><input id="setting-motion" type="checkbox" ${state.reducedMotion ? 'checked' : ''}></label></div><div class="dialog-actions"><button class="button button-primary" data-close>${state.started ? 'Resume expedition' : 'Back to the universe'} <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><button class="button button-ghost" data-panel="controls">Flight manual</button><button class="button button-ghost" data-panel="scores">Flight log</button>${state.started ? '<button class="button button-ghost" data-command="restart">Restart expedition</button>' : ''}</div><p class="fine-print">The complete reading version is available at any time. You don’t need to play to explore the work.</p>`;
-    } else if (id === 'scores') {
-      text('dialog-eyebrow', state.leaderboardMode === 'global' ? 'PUBLIC FLIGHT LOG / COMMUNITY' : 'LOCAL FLIGHT LOG / THIS DEVICE');
-      dialogContent.innerHTML = scoreMarkup();
+    } else if (id === 'scores' || death) {
+      text('dialog-eyebrow', death ? 'EXPEDITION ENDED / SIGNAL LOST' : state.leaderboardMode === 'global' ? 'PUBLIC FLIGHT LOG / COMMUNITY' : 'LOCAL FLIGHT LOG / THIS DEVICE');
+      dialogContent.innerHTML = scoreMarkup(death);
       renderScores(true);
     }
     dialog.scrollTop = 0;
     if (!wasOpen) { dialog.showModal(); document.body.classList.add('dialog-open'); command('overlay', { open: true }); }
-    byId('close-dialog').focus({ preventScroll: true });
+    byId(death ? 'death-restart' : 'close-dialog').focus({ preventScroll: true });
   }
 
   dialog.addEventListener('close', () => {
+    // Reject an unintended native/programmatic close without ever unpausing a
+    // dead run. Ignore stale close events if a panel has already been reopened.
+    if (dialog.open) return;
+    if (isDeathLocked() && !restartPending) { openPanel('death'); return; }
     activePanel = null;
     document.body.classList.remove('dialog-open');
     command('overlay', { open: false });
@@ -135,16 +175,17 @@ export function initUI() {
   dialog.addEventListener('click', event => {
     if (event.target === dialog) { const bounds = dialog.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closePanel(); }
   });
-  byId('close-dialog').addEventListener('click', closePanel);
+  byId('close-dialog').addEventListener('click', () => closePanel());
 
   document.addEventListener('click', event => {
     const button = event.target.closest('button, a');
     if (!button?.matches('[data-panel], [data-command], [data-close], [data-warp]')) return;
     event.preventDefault();
+    if (isDeathLocked() && button.dataset.command !== 'restart') { openPanel('death'); return; }
     if (button.dataset.panel) openPanel(button.dataset.panel);
     else if (button.hasAttribute('data-close')) closePanel();
     else if (button.dataset.warp) { if (!ready) return showToast('The universe is still loading. You can read every section now.'); const planet = button.dataset.warp; closePanel(); command('warp', { planet }); }
-    else if (button.dataset.command) { if (button.dataset.command === 'restart') closePanel(); command(button.dataset.command); }
+    else if (button.dataset.command) { if (button.dataset.command === 'restart') closePanel(true); command(button.dataset.command); }
   });
   dialog.addEventListener('submit', event => {
     if (event.target.id !== 'score-form') return;
@@ -293,9 +334,18 @@ export function initUI() {
     soundButton.setAttribute('aria-pressed', String(Boolean(state.sound)));
     soundButton.setAttribute('aria-label', state.sound ? 'Turn sound off' : 'Turn sound on');
     if (activePanel === 'achievement') renderAchievement();
-    if (activePanel === 'scores') {
-      if (previousMode !== state.leaderboardMode) { const name = byId('pilot-name')?.value || ''; openPanel('scores'); if (byId('pilot-name')) byId('pilot-name').value = name; }
-      else renderScores();
+    if (restartPending && !isDead()) { restartPending = false; deathLatched = false; }
+    if (isDeathLocked() && !restartPending && (activePanel !== 'death' || !dialog.open)) openPanel('death');
+    if (activePanel === 'scores' || activePanel === 'death') {
+      if (previousMode !== state.leaderboardMode) {
+        const name = byId('pilot-name')?.value || '';
+        const focusedId = document.activeElement?.id;
+        if (activePanel === 'scores') text('dialog-eyebrow', state.leaderboardMode === 'global' ? 'PUBLIC FLIGHT LOG / COMMUNITY' : 'LOCAL FLIGHT LOG / THIS DEVICE');
+        dialogContent.innerHTML = scoreMarkup(activePanel === 'death');
+        if (byId('pilot-name')) byId('pilot-name').value = name;
+        renderScores(true);
+        if (focusedId && byId(focusedId)) byId(focusedId).focus({ preventScroll: true });
+      } else renderScores();
     }
   }
 
