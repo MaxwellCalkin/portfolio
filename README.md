@@ -47,8 +47,10 @@ Orbital approach streams into a manually flyable local biome. This is a connecte
 ## Files
 
 - `game/main.js`: simulation, controls, combat, state, lifecycle
-- `game/world.js`: procedural worlds, ship, astronaut, and physical terrain/obstacle registration
+- `game/world.js`: procedural worlds, ship, and physical terrain/obstacle registration
 - `game/collision.js`: swept character collision, sliding, mesh-accurate ground heights
+- `game/hero-explorer.js`: original Kestrel / 07 hero, articulated locomotion, two-handed rifle IK
+- `game/chase-camera.js`: rigid ship-frame camera that follows the complete evasive loop
 - `game/creatures.js`: three sculpted alien species and five unique bosses
 - `game/project-stars.js`: BEACN and Heard Us identity-grounded landmarks
 - `game/space-playground.js`: dogfight AI, boost gates, pooled projectiles, and speed-conserving loop mathematics
