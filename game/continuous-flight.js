@@ -1,4 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
+import { FLIGHT_TUNING } from './solar-scale.js';
 
 export const LANDING_CLEARANCE = 1.9;
 const FORWARD = new Vector3(0, 0, -1);
@@ -75,41 +76,123 @@ function hullMargin(surface, position, quaternion, clearance = LANDING_CLEARANCE
   return margin;
 }
 
-/** Earliest pose contact on a short world segment, including rotation of the hull. */
+/** A sloping landing is settled against the visible contact face, not radial
+ * gravity. Center altitude alone is invalid when a wing rests on uneven ground. */
+export function isLandingSettled(position, quaternion, surface) {
+  return !!surface && UP.clone().applyQuaternion(quaternion).dot(contactUp(surface, position)) > .96
+    && hullMargin(surface, position, quaternion) <= .04;
+}
+
+const collisionBounds = new WeakMap();
+/** Bounds use the actual rendered triangle shell, not the nominal globe radius. */
+function surfaceBounds(surface) {
+  const geometry = surface.geometry, vertices = geometry?.attributes?.position;
+  if (!vertices) return { radius: surface.boundingRadius ?? surface.radius, lipschitz: surface.altitudeLipschitz ?? 2 };
+  const cached = collisionBounds.get(geometry);
+  if (cached?.version === vertices.version) return cached;
+  let outer = 0, inner = Infinity, cosine = 1;
+  const a = new Vector3(), b = new Vector3(), c = new Vector3(), ab = new Vector3(), ac = new Vector3();
+  for (let i = 0; i < vertices.count; i++) {
+    const r = a.fromBufferAttribute(vertices, i).length(); outer = Math.max(outer, r); inner = Math.min(inner, r);
+  }
+  const indices = geometry.index, count = indices?.count ?? vertices.count;
+  for (let i = 0; i < count; i += 3) {
+    a.fromBufferAttribute(vertices, indices ? indices.getX(i) : i);
+    b.fromBufferAttribute(vertices, indices ? indices.getX(i + 1) : i + 1);
+    c.fromBufferAttribute(vertices, indices ? indices.getX(i + 2) : i + 2);
+    ab.subVectors(b, a).cross(ac.subVectors(c, a));
+    if (ab.lengthSq() < 1e-18) continue;
+    ab.normalize();
+    for (const vertex of [a, b, c]) cosine = Math.min(cosine, Math.abs(ab.dot(vertex) / vertex.length()));
+  }
+  inner *= cosine;
+  const tangent = Math.sqrt(Math.max(0, 1 - cosine * cosine)) / Math.max(1e-8, cosine);
+  const result = { radius: outer, lipschitz: Math.sqrt(1 + (outer / Math.max(inner, 1e-8) * tangent) ** 2) * 1.00001, version: vertices.version };
+  collisionBounds.set(geometry, result); return result;
+}
+
+/** Broad phase clips a whole cruise segment, including both-endpoints-outside chords. */
+function sphereInterval(start, delta, center, radius, end = 1) {
+  if (!Number.isFinite(radius)) return [0, end];
+  const offset = start.clone().sub(center), lengthSquared = delta.lengthSq();
+  if (lengthSquared < 1e-24) return offset.lengthSq() <= radius * radius ? [0, end] : null;
+  const b = offset.dot(delta), c = offset.lengthSq() - radius * radius;
+  const discriminant = b * b - lengthSquared * c;
+  if (discriminant < 0) return null;
+  const root = Math.sqrt(discriminant);
+  const low = Math.max(0, (-b - root) / lengthSquared), high = Math.min(end, (-b + root) / lengthSquared);
+  return low <= high ? [low, high] : null;
+}
+
+/**
+ * Swept hull collision with a planet broad phase and adaptive local sampling.
+ * Empty space costs O(planets), independently of distance or signed speed. Near
+ * contact we retain sub-metre support tests, and bisect the first penetration.
+ * Rotation is included in the support travel bound. A pathological sampler can
+ * never create unbounded work: exhausting the bound stops at the last safe pose.
+ */
 function sweep(start, end, surfaces, clearance = LANDING_CLEARANCE, startQuaternion = null, endQuaternion = startQuaternion) {
   let hit = null;
-  const at = t => ({ position: start.clone().lerp(end, t), quaternion: startQuaternion?.clone().slerp(endQuaternion, t) });
+  const delta = end.clone().sub(start), distance = delta.length();
+  const turn = startQuaternion ? startQuaternion.angleTo(endQuaternion) : 0;
+  const travel = distance + turn * HULL_RADIUS;
+  const at = t => ({ position: start.clone().addScaledVector(delta, t), quaternion: startQuaternion?.clone().slerp(endQuaternion, t) });
   for (const surface of surfaces) {
-    if (hullMargin(surface, end, endQuaternion, clearance) >= 0) continue;
-    let low = 0, high = 1;
-    if (hullMargin(surface, start, startQuaternion, clearance) < -1e-7) high = 0;
-    else for (let i = 0; i < 22; i++) {
-      const middle = (low + high) / 2, pose = at(middle);
-      if (hullMargin(surface, pose.position, pose.quaternion, clearance) < 0) high = middle;
-      else low = middle;
+    const meshBound = surface.geometry?.boundingSphere;
+    const outer = meshBound ? meshBound.radius + meshBound.center.length() : surface.boundingRadius ?? surface.radius;
+    const interval = sphereInterval(start, delta, surface.center, outer + Math.max(clearance, HULL_RADIUS) + SKIN, hit?.fraction ?? 1);
+    if (!interval) continue;
+    const bounds = surfaceBounds(surface), [begin, finish] = interval;
+    let t = begin, previous = t, pose = at(t), margin = hullMargin(surface, pose.position, pose.quaternion, clearance), collided = margin < -1e-7;
+    let samples = 0;
+    while (!collided && t < finish && travel > 1e-12 && samples++ < 512) {
+      previous = t;
+      // Far from terrain this grows with clearance. Only the immediate contact
+      // shell uses the fine step, so cruise speed never multiplies frame substeps.
+      const advance = Math.max(.35, margin / Math.max(1, bounds.lipschitz) * .8);
+      t = Math.min(finish, t + Math.min(advance / travel, turn > 0 ? .008 / turn : 1));
+      pose = at(t); margin = hullMargin(surface, pose.position, pose.quaternion, clearance);
+      collided = margin < -1e-7;
+    }
+    if (!collided && t >= finish) continue;
+    if (!collided && travel <= 1e-12) continue;
+    let low = previous, high = t;
+    if (collided) {
+      if (t === begin) low = high = begin;
+      else for (let i = 0; i < 26; i++) {
+        const middle = (low + high) / 2, sample = at(middle);
+        if (hullMargin(surface, sample.position, sample.quaternion, clearance) < 0) high = middle;
+        else low = middle;
+      }
     }
     if (!hit || low < hit.fraction) hit = { surface, fraction: low, ...at(low) };
   }
   return hit;
 }
 
-/** Constrain external motion. Optional endpoint attitudes also sweep the real ship hull. */
+/** Constrain external maneuvers without subdividing their empty-space distance. */
 export function sweepFlightSegment(start, end, surfacesIterable = [], clearance = LANDING_CLEARANCE, startQuaternion = null, endQuaternion = startQuaternion) {
   const surfaces = Array.from(surfacesIterable instanceof Map ? surfacesIterable.values() : surfacesIterable);
-  const smallestRadius = surfaces.reduce((r, surface) => Math.min(r, surface.radius || r), Infinity);
-  const steps = Math.max(1, Math.ceil(start.distanceTo(end) / Math.min(.85, smallestRadius * .1)),
-    startQuaternion ? Math.ceil(startQuaternion.angleTo(endQuaternion) / .01) : 1);
-  const previous = start.clone();
-  let previousQuaternion = startQuaternion?.clone();
-  for (let i = 1; i <= steps; i++) {
-    const next = start.clone().lerp(end, i / steps);
-    const nextQuaternion = startQuaternion?.clone().slerp(endQuaternion, i / steps);
-    const collision = sweep(previous, next, surfaces, clearance, previousQuaternion, nextQuaternion);
-    if (collision) return { position: collision.position.addScaledVector(radialUp(collision.surface, collision.position), SKIN),
-      quaternion: collision.quaternion, hit: true, surface: collision.surface };
-    previous.copy(next); previousQuaternion = nextQuaternion;
-  }
+  const collision = sweep(start, end, surfaces, clearance, startQuaternion, endQuaternion);
+  if (collision) return { position: collision.position.addScaledVector(radialUp(collision.surface, collision.position), SKIN),
+    quaternion: collision.quaternion, hit: true, surface: collision.surface };
   return { position: end.clone(), quaternion: endQuaternion?.clone(), hit: false, surface: null };
+}
+
+/** Continuous engine envelope; release still coasts and X smoothly brakes. */
+export function flightEnvelope(altitude) {
+  const close = 1 - smooth(45, 220, altitude);
+  const cruise = smooth(FLIGHT_TUNING.cruiseStartsAt, FLIGHT_TUNING.cruiseFullyAt, altitude);
+  const blend = (local, deep) => local + (deep - local) * cruise;
+  return {
+    nearAmount: close, cruiseAmount: cruise,
+    forwardSpeed: blend(120 - 72 * close, FLIGHT_TUNING.cruiseSpeed),
+    boostSpeed: blend(340, FLIGHT_TUNING.boostSpeed),
+    reverseSpeed: blend(120 - 60 * close, FLIGHT_TUNING.reverseSpeed),
+    acceleration: blend(68 - 34 * close, FLIGHT_TUNING.cruiseAcceleration),
+    boostAcceleration: blend(150, FLIGHT_TUNING.boostAcceleration),
+    reverseAcceleration: blend(68 - 34 * close, FLIGHT_TUNING.reverseAcceleration),
+  };
 }
 
 /** Level first, then settle into the newly available space, at a bounded descent rate. */
@@ -144,16 +227,15 @@ export function stepFlight(state, input = {}, dt = 0, surfacesIterable = []) {
   const reverse = clamp(Number(input.reverse) || 0, 0, 1);
   const boost = Boolean(input.boost);
   const yaw = axis(input.yaw), pitch = axis(input.pitch);
-  // Bound both angular time and travel distance, even for very fast boosted impacts.
-  // A planet cannot be skipped by a long segment whose endpoints are both outside.
-  const smallestRadius = surfaces.reduce((r, s) => Math.min(r, s.radius || r), Infinity);
-  const travelLimit = Math.min(.85, smallestRadius * .1);
-  const steps = Math.max(1, Math.ceil(duration * 120), Math.ceil((Math.abs(speed) + 170 * duration + 7) * duration / travelLimit));
+  // Integrate only time/turning; whole-segment sweeps handle any travel distance.
+  // Fast cruise and slow landing therefore use the same number of physics steps.
+  const steps = Math.max(1, Math.ceil(duration * FLIGHT_TUNING.integrationRate));
   const h = duration / steps;
 
   for (let i = 0; i < steps && h > 0; i++) {
     let { surface, altitude } = nearest(position, surfaces);
-    const nearAmount = surface ? 1 - smooth(45, 220, altitude) : 0;
+    const envelope = flightEnvelope(surface ? altitude : 220);
+    const { nearAmount } = envelope;
     const launching = landed && ((throttle > 0 && pitch > 0) || (reverse > 0 && pitch < 0));
     if (!surface || altitude > LANDING_CLEARANCE + HULL_RADIUS + 2 || launching) landed = false;
     const oldQuaternion = quaternion.clone();
@@ -161,11 +243,11 @@ export function stepFlight(state, input = {}, dt = 0, surfacesIterable = []) {
 
     if (brake > 0) speed -= Math.sign(speed) * Math.min(Math.abs(speed), (36 + Math.abs(speed) * 1.35) * brake * h);
     else if (reverse > 0) {
-      const target = -120 + 60 * nearAmount;
-      speed -= Math.min(Math.max(0, speed - target), (68 - 34 * nearAmount) * reverse * h);
+      const target = -envelope.reverseSpeed;
+      speed -= Math.min(Math.max(0, speed - target), envelope.reverseAcceleration * reverse * h);
     } else if (throttle > 0 || boost) {
-      const target = boost ? 340 : 120 - 72 * nearAmount;
-      const acceleration = boost ? 150 : 68 - 34 * nearAmount;
+      const target = boost ? envelope.boostSpeed : envelope.forwardSpeed;
+      const acceleration = boost ? envelope.boostAcceleration : envelope.acceleration;
       // Thrust does not silently brake an already-fast ship on atmosphere entry.
       speed += Math.min(Math.max(0, target - speed), acceleration * (boost ? 1 : throttle) * h);
     }
@@ -215,5 +297,5 @@ export function stepFlight(state, input = {}, dt = 0, surfacesIterable = []) {
   }
 
   const { surface, altitude } = nearest(position, surfaces);
-  return { position, quaternion: quaternion.normalize(), speed, landed, surface, altitude, touchdown, impact };
+  return { position, quaternion: quaternion.normalize(), speed, landed, surface, altitude, touchdown, impact, integrationSteps: steps };
 }

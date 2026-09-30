@@ -5,12 +5,38 @@ const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const command = (type, details = {}) => window.dispatchEvent(new CustomEvent('game:command', { detail: { type, ...details } }));
 const planetFor = id => PLANETS.find(planet => planet.id === (typeof id === 'object' ? id?.id : id));
+// Shared by world, altitude, and archive readouts so interplanetary distances
+// stay legible without adding another layer of telemetry.
+export function formatDistance(value) {
+  const meters = Math.max(0, Number(value) || 0);
+  if (!Number.isFinite(meters)) return '—';
+  return meters >= 1000 ? `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} KM` : `${Math.round(meters)} M`;
+}
+
+export function createMapProjection(landmarks = PLANETS) {
+  const xExtent = Math.max(1, ...landmarks.map(item => Math.abs(item.position?.[0] || 0) + (item.radius || 0)));
+  const zExtent = Math.max(1, ...landmarks.map(item => Math.abs(item.position?.[2] || 0) + (item.radius || 0)));
+  return (x = 0, z = 0) => ({ x: clamp(50 + x / xExtent * 36, 5, 95), y: clamp(50 + z / zExtent * 34, 5, 95) });
+}
+
+export function shrineGuidance(shrine, compact = false) {
+  const bearing = Math.atan2(Math.sin(Number(shrine.bearing) || 0), Math.cos(Number(shrine.bearing) || 0));
+  const angle = Math.abs(bearing);
+  const direction = angle < .3 ? 'AHEAD' : angle > 2.6 ? 'BEHIND' : bearing < 0 ? 'LEFT' : 'RIGHT';
+  const projected = Number.isFinite(shrine.screenX) && Number.isFinite(shrine.screenY) && !shrine.behind;
+  const x = projected ? (shrine.screenX + 1) * 50 : bearing < 0 ? 0 : 100;
+  const y = projected ? (1 - shrine.screenY) * 50 : 47;
+  const markerX = clamp(x, 7, 93), markerY = clamp(y, compact ? 33 : 29, compact ? 54 : 66);
+  const edge = !projected || markerX !== x || markerY !== y;
+  return { bearing, direction, x: markerX, y: markerY, edge, rotation: projected ? Math.atan2(x - 50, 50 - y) : bearing < 0 ? -Math.PI / 2 : Math.PI / 2 };
+}
+
 const ARROW = '<svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg>';
 const controlsMarkup = () => `<div class="manual-section"><span class="tiny">01 / AT THE HELM</span><h3>Keep the horizon moving.</h3><div class="controls-grid">${[
-  ['Forward / reverse thrust', 'W / S'], ['Brake to a stop', 'X'], ['Steer / pitch', 'ARROWS / DRAG'], ['Turn left / right', 'A / D'], ['Gentle descent near a planet', 'C'], ['Fire ship weapons', 'SPACE / CLICK'], ['Ship boost', 'SHIFT'], ['360° evasive loop · while flying', 'Q'], ['Open BEACN · near the sun', 'E'], ['Exit ship · once landed', 'E'],
-].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>W adds forward thrust. S adds reverse thrust: hold it to slow down, pass through a stop, and fly backward. X brakes to a stop. Steer with the arrow keys, A / D, or a mouse or touch drag. ↑ raises the nose and ↓ lowers it.</p><p>Fly directly toward a world and follow its curved surface. Brake with X, then hold C for a gentle descent toward the ground. Touchdown is automatic when you are low and slow. Once landed, press E to leave the cockpit. Space and the planet’s surface are one continuous place: you can fly around the whole world.</p><p>Walk back to your ship and press E to board. Hold W and pitch the nose up with ↑ or a drag to lift off, then keep flying away to return to open space. Fly through luminous rings for a boost. Q performs an evasive loop while airborne and preserves your entry speed. Fly close to the BEACN sun and press E to open <a href="https://beacn.space" target="_blank" rel="noopener noreferrer">beacn.space</a> in a new tab.</p></div><div class="manual-section"><span class="tiny">02 / BOOTS ON THE GROUND</span><h3>Aim with your eyes.</h3><div class="controls-grid">${[
+  ['Forward / reverse thrust', 'W / S'], ['Brake to a stop', 'X'], ['Steer / pitch', 'ARROWS / DRAG'], ['Turn left / right', 'A / D'], ['Gentle descent near a planet', 'C'], ['Fire ship weapons', 'SPACE / CLICK'], ['Boost / deep-space transit', 'SHIFT'], ['360° evasive loop · while flying', 'Q'], ['Open BEACN · near the sun', 'E'], ['Exit ship · once landed', 'E'],
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>W adds forward thrust. S adds reverse thrust: hold it to slow down, pass through a stop, and fly backward. X brakes to a stop. Hold Shift to accelerate through deep space; boost eases near a world for a controlled approach. Steer with the arrow keys, A / D, or a mouse or touch drag. ↑ raises the nose and ↓ lowers it.</p><p>Fly directly toward a world and follow its curved surface. Brake with X, then hold C for a gentle descent toward the ground. Touchdown is automatic when you are low and slow. Once landed, press E to leave the cockpit. Space and the planet’s surface are one continuous place: you can fly around the whole world.</p><p>Walk back to your ship and press E to board. Hold W and pitch the nose up with ↑ or a drag to lift off, then keep flying away to return to open space. Fly through luminous rings for a boost. Q performs an evasive loop while airborne and preserves your entry speed. Fly close to the BEACN sun and press E to open <a href="https://beacn.space" target="_blank" rel="noopener noreferrer">beacn.space</a> in a new tab.</p></div><div class="manual-section"><span class="tiny">02 / BOOTS ON THE GROUND</span><h3>Aim with your eyes.</h3><div class="controls-grid">${[
   ['Walk / strafe', 'W A S D'], ['Look / aim', 'MOUSE'], ['Fire pulse weapon', 'CLICK / SPACE'], ['Vector dash', 'SHIFT'], ['Set anchor / recall', 'Q'], ['Singularity ultimate', 'R'], ['Open archive / board ship', 'E'], ['System map / pause', 'M / ESC'],
-].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>On desktop, click the world to capture your mouse. Move the mouse to aim in third person and use WASD to move relative to your view. Escape releases the mouse. Find the glowing archive to read. Defeat each world’s warden to earn the Starforged Explorer title and aurora thrusters.</p><p>On touchscreens, use the movement arrows and drag across the world to steer or aim. In the ship, hold BACK for reverse thrust, BRAKE to stop, and DESCEND for a gentle landing. Hold the fire button to shoot; tap an ability to activate it.</p></div><p class="fine-print">The map’s Warp buttons are an optional shortcut. Every world can be reached by flying, and every portfolio section can be read from the navigation without combat, scores, or unlocks.</p>`;
+].map(([action, keys]) => `<div class="control-row"><span>${action}</span><kbd>${keys}</kbd></div>`).join('')}</div><p>On desktop, click the world to capture your mouse. Move the mouse to aim in third person and use WASD to move relative to your view. Escape releases the mouse. Follow the nearest archive signal to read. Archives repeat around each world, so you can land anywhere. Defeat each world’s warden to earn the Starforged Explorer title and aurora thrusters.</p><p>On touchscreens, use the movement arrows and drag across the world to steer or aim. In the ship, hold BACK for reverse thrust, BRAKE to stop, and DESCEND for a gentle landing. Hold the fire button to shoot; tap an ability to activate it.</p></div><p class="fine-print">The map’s Warp buttons are an optional shortcut. Every world can be reached by flying, and every portfolio section can be read from the navigation without combat, scores, or unlocks.</p>`;
 
 export function initUI() {
   const byId = id => document.getElementById(id);
@@ -28,6 +54,9 @@ export function initUI() {
   let controlContext = '';
   let restartPending = false;
   let deathLatched = false;
+  let mapProjection = createMapProjection();
+  let mapSignature = '';
+  const compactViewport = matchMedia('(max-width: 600px)');
   const isDead = () => Boolean(state.started && state.health <= 0);
   const isDeathLocked = () => deathLatched || isDead();
   const defeatedWorlds = () => PLANETS.filter(planet => state.defeatedBosses?.includes(planet.id));
@@ -40,12 +69,13 @@ export function initUI() {
     button.className = 'map-dot';
     button.dataset.planet = planet.id;
     button.style.setProperty('--planet-color', planet.color);
-    button.style.left = `${50 + planet.position[0] / 42}%`;
-    button.style.top = `${50 + planet.position[2] / 49}%`;
+    const point = mapProjection(planet.position[0], planet.position[2]);
+    button.style.left = `${point.x}%`;
+    button.style.top = `${point.y}%`;
     button.setAttribute('aria-label', `Warp to ${planet.name}`);
     button.title = `${planet.name} · Warp to world`;
     const label = document.createElement('span');
-    label.className = `map-dot-label ${planet.position[0] > 100 ? 'left' : ''}`;
+    label.className = `map-dot-label ${planet.position[0] > 0 ? 'left' : ''}`;
     label.textContent = planet.number;
     button.append(label);
     button.addEventListener('click', () => { if (!ready || isDeathLocked()) return; closePanel(); command('warp', { planet: planet.id }); });
@@ -243,6 +273,7 @@ export function initUI() {
     document.body.dataset.vehicle = onFoot ? 'foot' : 'ship';
     document.body.classList.toggle('has-boss', Boolean(state.boss && state.boss.health > 0));
     document.body.classList.toggle('is-boosting', Boolean(state.boostActive));
+    document.body.classList.toggle('is-cruising', Boolean(state.cruiseActive) && !onFoot);
     const nextContext = onFoot ? 'foot' : atmosphericFlight ? 'atmosphere' : 'space';
     if (nextContext !== controlContext) {
       controlContext = nextContext;
@@ -264,12 +295,12 @@ export function initUI() {
     byId('speed-value').setAttribute('aria-label', `${Math.abs(roundedSpeed)} meters per second${reversing ? ', reverse' : ''}`);
     byId('speed-value').title = reversing ? 'Reverse velocity' : 'Forward velocity';
     byId('flight-telemetry').hidden = onFoot;
-    text('altitude-label', atmosphericFlight ? `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE` : 'DEEP SPACE');
-    text('flight-activity', state.spaceEnemies > 0 && inSpace ? `${state.spaceEnemies} HOSTILES · ${state.ringCount || 0} RINGS` : `${state.ringCount || 0} RINGS`);
+    text('altitude-label', atmosphericFlight ? `${formatDistance(state.altitude)} ALTITUDE` : 'DEEP SPACE');
+    text('flight-activity', state.cruiseActive ? 'TRANSIT CRUISE' : state.spaceEnemies > 0 && inSpace ? `${state.spaceEnemies} HOSTILES · ${state.ringCount || 0} RINGS` : `${state.ringCount || 0} RINGS`);
     byId('touch-flight').hidden = onFoot;
     text('dash-name', onFoot ? 'VECTOR DASH' : 'BOOST');
-    text('dash-state', onFoot ? state.dashCooldown > 0 ? `${Math.ceil(state.dashCooldown)}s` : 'READY' : state.boostActive ? 'BOOSTING' : 'READY');
-    byId('dash-button').setAttribute('aria-label', onFoot ? 'Vector dash, Shift' : 'Ship boost, Shift');
+    text('dash-state', onFoot ? state.dashCooldown > 0 ? `${Math.ceil(state.dashCooldown)}s` : 'READY' : state.cruiseActive ? 'CRUISE' : state.boostActive ? 'BOOSTING' : 'READY');
+    byId('dash-button').setAttribute('aria-label', onFoot ? 'Vector dash, Shift' : 'Ship boost and deep-space transit, Shift');
     text('recall-name', onFoot ? 'TEMPORAL ANCHOR' : 'EVASIVE LOOP');
     text('recall-state', onFoot ? state.recallActive ? `RECALL ${state.recallRemaining || ''}` : state.recallCooldown > 0 ? `${Math.ceil(state.recallCooldown)}s` : 'SET ANCHOR' : state.landed ? 'AIRBORNE ONLY' : state.loopCooldown > 0 ? `${Math.ceil(state.loopCooldown)}s` : '360° · READY');
     byId('recall-button').disabled = !onFoot && Boolean(state.landed);
@@ -303,6 +334,24 @@ export function initUI() {
     const near = planetFor(state.nearPlanet);
     const approach = planetFor(state.approachingPlanet);
     const target = planetFor(state.targetPlanet?.id || state.targetPlanet);
+    const shrine = state.nearestShrine;
+    const shrineVisible = Boolean(state.started && shrine && Number.isFinite(shrine.distance) && (onFoot || Boolean(state.vehicle)) && !isDeathLocked());
+    byId('shrine-guide').hidden = !shrineVisible;
+    byId('shrine-marker').hidden = !shrineVisible || Boolean(onFoot && state.canInteract);
+    if (shrineVisible) {
+      const guidance = shrineGuidance(shrine, compactViewport.matches);
+      const shrineName = shrine.name || `${p?.name || 'World'} archive`;
+      const detail = onFoot && state.canInteract ? 'IN REACH' : `${formatDistance(shrine.distance)} · ${guidance.direction}`;
+      text('shrine-name', shrineName);
+      text('shrine-distance', detail);
+      byId('shrine-guide').setAttribute('aria-label', `Nearest archive: ${shrineName}, ${detail.toLowerCase()}`);
+      byId('shrine-bearing').style.transform = `rotate(${guidance.bearing}rad)`;
+      const marker = byId('shrine-marker');
+      marker.style.left = `${guidance.x}%`;
+      marker.style.top = `${guidance.y}%`;
+      marker.style.setProperty('--bearing', `${guidance.rotation}rad`);
+      marker.classList.toggle('is-edge', guidance.edge);
+    }
     const nearBeacn = Boolean(state.vehicle) && state.nearProject === 'beacn';
     if (nearBeacn) {
       text('objective-title', 'BEACN / The central sun');
@@ -310,16 +359,16 @@ export function initUI() {
       text('target-label', 'BEACN IN RANGE · E TO OPEN');
     } else if (onFoot) {
       text('objective-title', `${p?.name || 'World'} / ${bossVisible ? 'World warden' : 'Archive signal'}`);
-      text('objective-detail', state.canInteract ? 'Press E to open the archive' : state.canEmbark ? 'Press E to board your ship' : bossVisible ? 'Keep moving. Defeat the warden, or explore the archive.' : 'Find the glowing archive. Explore at your own pace.');
+      text('objective-detail', state.canInteract ? 'Press E to open the archive' : state.canEmbark ? 'Press E to board your ship' : bossVisible ? 'Keep moving. Defeat the warden, or explore the archive.' : 'Follow the nearest archive signal. Explore at your own pace.');
       text('target-label', state.canInteract ? 'ARCHIVE IN RANGE' : state.canEmbark ? 'SHIP IN RANGE · E TO BOARD' : `${p?.title || 'SURFACE'} · ${state.weaponName || 'PULSE I'}`);
     } else if (atmosphericFlight) {
       text('objective-title', `${p?.name || 'World'} / ${state.landed ? 'Touchdown' : 'Atmospheric approach'}`);
       text('objective-detail', state.settling ? 'Landing gear settling · Hold position' : state.landed ? 'E to exit ship · W + ↑ to take off' : 'X to brake · C to descend gently · S to reverse');
-      text('target-label', state.settling ? 'SETTLING ON THE TERRAIN' : state.landed ? 'LANDED · E TO EXIT SHIP' : `${Math.max(0, Math.round(state.altitude || 0))} M ALTITUDE · FOLLOW THE CURVED HORIZON`);
+      text('target-label', state.settling ? 'SETTLING ON THE TERRAIN' : state.landed ? 'LANDED · E TO EXIT SHIP' : `${formatDistance(state.altitude)} ALTITUDE · FOLLOW THE CURVED HORIZON`);
     } else {
       text('objective-title', approach ? `${approach.name} / Approach` : state.spaceEnemies > 0 ? 'Hostile ships on your route' : visited.length === 5 ? 'A universe well explored' : 'Explore the five worlds');
       text('objective-detail', approach ? 'Fly toward the curved horizon · X to brake · C to descend' : state.spaceEnemies > 0 ? 'Aim and fire · Shift to boost · Q for an evasive loop' : 'Fly toward a world. Follow its approach signal.');
-      text('target-label', target ? `NEAREST · ${target.name} / ${Math.round(state.targetPlanet?.distance || 0)} M${state.targetPlanet?.behind ? ' · BEHIND' : ''}` : near ? `${near.name} / ${Math.round(state.nearestDistance || 0)} M` : 'FOLLOW A SIGNAL');
+      text('target-label', target ? `NEAREST · ${target.name} / ${formatDistance(state.targetPlanet?.distance)}${state.targetPlanet?.behind ? ' · BEHIND' : ''}` : near ? `${near.name} / ${formatDistance(state.nearestDistance)}` : 'FOLLOW A SIGNAL');
     }
     const canInteract = nearBeacn || (!onFoot && Boolean(state.landed) && !state.settling) || (onFoot && Boolean(state.canInteract || state.canEmbark));
     byId('interaction').hidden = !canInteract;
@@ -327,9 +376,29 @@ export function initUI() {
     text('interact-label', interactLabel);
     byId('interact-button').setAttribute('aria-label', `E · ${interactLabel}${nearBeacn ? ', opens in a new tab' : ''}`);
     document.querySelector('.touch-actions [data-command=interact]').setAttribute('aria-label', canInteract ? `${interactLabel}${nearBeacn ? ', opens in a new tab' : ''}` : 'Interact, E');
+    const landmarks = Array.isArray(state.projectLandmarks) ? state.projectLandmarks : Object.values(state.projectLandmarks || {});
+    const nextMapSignature = JSON.stringify(landmarks);
+    if (mapSignature !== nextMapSignature) {
+      mapSignature = nextMapSignature;
+      mapProjection = createMapProjection([...PLANETS, ...landmarks]);
+      document.querySelectorAll('.map-dot').forEach(dot => {
+        const planet = planetFor(dot.dataset.planet);
+        const point = mapProjection(planet.position[0], planet.position[2]);
+        dot.style.left = `${point.x}%`;
+        dot.style.top = `${point.y}%`;
+      });
+      const beacn = landmarks.find(landmark => landmark.id === 'beacn');
+      if (beacn) {
+        const point = mapProjection(beacn.position[0], beacn.position[2]);
+        const link = document.querySelector('.map-beacn');
+        link.style.left = `${point.x}%`;
+        link.style.top = `${point.y}%`;
+      }
+    }
     const mapPosition = state.position || { x: 0, z: 120 };
-    byId('map-player').style.left = `${clamp(50 + mapPosition.x / 42, 3, 97)}%`;
-    byId('map-player').style.top = `${clamp(50 + mapPosition.z / 49, 3, 97)}%`;
+    const mapPoint = mapProjection(mapPosition.x, mapPosition.z);
+    byId('map-player').style.left = `${mapPoint.x}%`;
+    byId('map-player').style.top = `${mapPoint.y}%`;
     const soundButton = byId('sound-toggle');
     soundButton.setAttribute('aria-pressed', String(Boolean(state.sound)));
     soundButton.setAttribute('aria-label', state.sound ? 'Turn sound off' : 'Turn sound on');

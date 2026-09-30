@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { SOLAR_SCALE } from './solar-scale.js';
+import { withSolarDepth } from './solar-depth.js';
 import { createCollisionWorld, createTerrainSampler, createMeshFootprint } from './collision.js';
 
 /* Original procedural world art. All constructors face -Z; terrain coordinates are world-local. */
@@ -8,7 +10,7 @@ export const PLANETS = [
   { id: 'projects', name: 'Projects', subtitle: 'WORLDS I HAVE BUILT', color: '#bda3ed', position: [450, -50, -80], radius: 58 },
   { id: 'mission', name: 'Mission', subtitle: 'WHAT COMES NEXT', color: '#81b9e3', position: [-450, -30, 90], radius: 84 },
   { id: 'contact', name: 'Contact', subtitle: 'A SIGNAL BETWEEN US', color: '#eac789', position: [40, 100, 350], radius: 46 },
-].map(p=>({...p,position:p.position.map(value=>value*3.5),radius:p.radius*2.5}));
+].map(p=>({...p,position:p.position.map(value=>value*3.5*SOLAR_SCALE.planetSpacing),radius:p.radius*2.5*SOLAR_SCALE.planetRadius}));
 const TAU = Math.PI * 2;
 const color = c => new THREE.Color(c);
 const clamp = THREE.MathUtils.clamp;
@@ -59,7 +61,7 @@ float fbm(vec3 p) { float v=0.; float a=.5; for(int i=0;i<5;i++){v+=a*noise(p);p
 `;
 const planetVertex = `varying vec3 vPosition; varying vec3 vNormal; varying vec3 vWorld; void main(){vPosition=position;vNormal=normalize(mat3(modelMatrix)*normal);vWorld=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
 function planetMaterial(base, seed, giant = false) {
-  return new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial(withSolarDepth({
     uniforms: { uColor: { value: color(base) }, uSeed: { value: seed }, uGiant: { value: giant ? 1 : 0 }, uTime: { value: 0 } },
     vertexShader: planetVertex,
     fragmentShader: `uniform vec3 uColor;uniform float uSeed,uGiant,uTime;varying vec3 vPosition,vNormal,vWorld;${noiseGLSL}
@@ -72,23 +74,23 @@ function planetMaterial(base, seed, giant = false) {
     vec3 surveyGround=mix(uColor*.38,uColor*.76,.5+.5*noise(vPosition*.6+uSeed));albedo=mix(albedo,surveyGround,closeView*.7);vec3 lit=albedo*(.07+.92*daylight+closeView*.38);float spec=pow(max(dot(reflect(-l,n),v),0.),40.)*(1.-edges);lit+=vec3(.52,.71,.73)*spec*.28;
     float rim=pow(1.-max(dot(n,v),0.),3.);lit+=uColor*rim*.36*twilight;float city=step(.82,noise(p*245.))*step(.53,continents)*(1.-twilight);lit+=vec3(1.,.43,.12)*city*.22*(1.-closeView);
     gl_FragColor=vec4(lit,1.);#include <tonemapping_fragment>\n#include <colorspace_fragment>}`.replace(';}#', ';}\n#').replace(';#include', ';\n#include'),
-  });
+  }));
 }
 function atmosphere(radius, c) {
-  const m = new THREE.ShaderMaterial({
+  const m = new THREE.ShaderMaterial(withSolarDepth({
     uniforms: { uColor: { value: color(c) } }, vertexShader: planetVertex,
     fragmentShader: `uniform vec3 uColor;varying vec3 vNormal,vWorld;void main(){vec3 v=normalize(cameraPosition-vWorld);float rim=pow(1.-abs(dot(normalize(vNormal),v)),3.4);float lit=.28+.72*max(dot(normalize(vNormal),normalize(vec3(-.65,.6,.55))),0.);gl_FragColor=vec4(uColor*1.1,rim*lit*.55);}`,
     transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
-  });
+  }));
   return new THREE.Mesh(new THREE.SphereGeometry(radius * 1.047, 48, 32), m);
 }
 function createRing(inner, outer, c, opacity = .5) {
-  const ring = new THREE.Mesh(new THREE.RingGeometry(inner, outer, 160, 1), new THREE.ShaderMaterial({
+  const ring = new THREE.Mesh(new THREE.RingGeometry(inner, outer, 160, 1), new THREE.ShaderMaterial(withSolarDepth({
     uniforms: { uColor: { value: color(c) }, uInner: { value: inner }, uOuter: { value: outer }, uOpacity: { value: opacity } },
     vertexShader: `varying vec2 vPosition;void main(){vPosition=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader: `uniform vec3 uColor;uniform float uInner,uOuter,uOpacity;varying vec2 vPosition;void main(){float r=length(vPosition);float t=(r-uInner)/(uOuter-uInner);float bands=.32+.30*sin(t*225.)+.22*sin(t*77.)+.14*sin(t*981.);float a=smoothstep(0.,.07,t)*(1.-smoothstep(.86,1.,t));float gap=smoothstep(.006,.011,abs(t-.48));gl_FragColor=vec4(uColor*(.65+.5*t),a*clamp(bands,.09,.82)*gap*uOpacity);}`,
     side: THREE.DoubleSide, transparent: true, depthWrite: false,
-  }));
+  })));
   ring.rotation.x = Math.PI * .39; ring.rotation.y = -.22; return ring;
 }
 function createPlanet(spec, i, giant = false) {
@@ -107,19 +109,19 @@ function starfield(count, radius, seed = 42, minRadius = .8) {
     c.setHSL(rnd()<.7 ? .56+rnd()*.13 : .08+rnd()*.08,.1+rnd()*.32,.57+rnd()*.43); colors.set([c.r,c.g,c.b],i*3); sizes[i] = rnd()<.03 ? 3.2+rnd()*2 : .7+rnd()*1.5;
   }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(positions,3));geo.setAttribute('color',new THREE.BufferAttribute(colors,3));geo.setAttribute('size',new THREE.BufferAttribute(sizes,1));
-  return new THREE.Points(geo,new THREE.ShaderMaterial({
+  return new THREE.Points(geo,new THREE.ShaderMaterial(withSolarDepth({
     uniforms: { uTime: { value: 0 } }, vertexShader: `attribute float size;varying vec3 vColor;uniform float uTime;void main(){vColor=color;vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;gl_PointSize=size*(.82+.18*sin(position.x+uTime*.3));}`,
     fragmentShader: `varying vec3 vColor;void main(){float d=length(gl_PointCoord-.5);float a=1.-smoothstep(.1,.5,d);gl_FragColor=vec4(vColor,a);}`,
     transparent:true,vertexColors:true,depthWrite:false,blending:THREE.AdditiveBlending,
-  }));
+  })));
 }
 function nebulaSky(radius = 2600, surface = false, tint = '#618f91') {
-  return new THREE.Mesh(new THREE.SphereGeometry(radius,40,24),new THREE.ShaderMaterial({
+  return new THREE.Mesh(new THREE.SphereGeometry(radius,40,24),new THREE.ShaderMaterial(withSolarDepth({
     uniforms:{uTint:{value:color(tint)},uSurface:{value:surface?1:0}},side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 vDir;void main(){vDir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`varying vec3 vDir;uniform vec3 uTint;uniform float uSurface;${noiseGLSL}
     void main(){vec3 p=normalize(vDir);float ribbon=exp(-pow((p.y+.17+p.x*.24)/.28,2.));float n=fbm(p*3.1+vec3(2.,3.,5.));float detail=fbm(p*9.+n*4.);float dust=smoothstep(.34,.72,n)*ribbon;vec3 ink=vec3(.006,.014,.024);vec3 blue=vec3(.042,.103,.125);vec3 wine=vec3(.15,.063,.053);vec3 fog=mix(blue,wine,smoothstep(-.25,.6,p.x));vec3 sky=ink+fog*dust*.78+vec3(.06,.11,.12)*pow(detail,3.)*ribbon;float horizon=exp(-abs(p.y)*5.);sky=mix(sky,sky+uTint*.13*horizon+uTint*.018,uSurface);gl_FragColor=vec4(sky,1.);}`,
-  }));
+  })));
 }
 function arcLine(radius, start, end, c, opacity = .1) {
   const pts=[];for(let i=0;i<=180;i++){const a=mix(start,end,i/180);pts.push(new THREE.Vector3(Math.cos(a)*radius,0,Math.sin(a)*radius));}
@@ -132,13 +134,13 @@ function worldLighting(group, surface = false, tint = '#8bbbbb') {
 }
 export function createSpaceWorld(scene) {
   const group=new THREE.Group();group.name='procedural-deep-space';scene.add(group);
-  group.add(nebulaSky(12000));const stars=starfield(6000,10500);group.add(stars);worldLighting(group);
+  group.add(nebulaSky(SOLAR_SCALE.skyRadius));const stars=starfield(6000,SOLAR_SCALE.starfieldRadius);group.add(stars);worldLighting(group);
   const planets=PLANETS.map((spec,i)=>{const p=createPlanet(spec,i);group.add(p.root);p.globe.userData.planetId=spec.id;return {...spec,mesh:p.globe,group:p.root};});
-  for(let i=0;i<3;i++){const line=arcLine(440+i*210,-Math.PI*.98,Math.PI*.92,'#7daeb2',.065-i*.009);line.rotation.set(.08+i*.07,0,.10);line.position.y=-130-i*55;group.add(line);}
-  const sun=createGlow('#f7dfb2',380);sun.position.set(-720,380,-1400);group.add(sun);const sunCore=createGlow('#ffecc4',45);sunCore.position.copy(sun.position);group.add(sunCore);
+  for(let i=0;i<3;i++){const line=arcLine((440+i*210)*SOLAR_SCALE.planetSpacing,-Math.PI*.98,Math.PI*.92,'#7daeb2',.065-i*.009);line.rotation.set(.08+i*.07,0,.10);line.position.y=(-130-i*55)*SOLAR_SCALE.planetSpacing;group.add(line);}
+  const sun=createGlow('#f7dfb2',380*SOLAR_SCALE.planetRadius);sun.position.set(-720*SOLAR_SCALE.planetSpacing,380*SOLAR_SCALE.planetSpacing,-1400*SOLAR_SCALE.planetSpacing);group.add(sun);const sunCore=createGlow('#ffecc4',45*SOLAR_SCALE.planetRadius);sunCore.position.copy(sun.position);group.add(sunCore);
   const rnd=random(928),rockGeo=new THREE.IcosahedronGeometry(1,0),rockMat=standard('#536167',.95,.25);
   const debris=new THREE.InstancedMesh(rockGeo,rockMat,140); const dummy=new THREE.Object3D();
-  for(let i=0;i<140;i++){let a=rnd()*TAU,r=670+rnd()*260;dummy.position.set(Math.cos(a)*r,(rnd()-.5)*140-140,Math.sin(a)*r);dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);dummy.scale.set(1+rnd()*5,1+rnd()*3,1+rnd()*4);dummy.updateMatrix();debris.setMatrixAt(i,dummy.matrix);}group.add(debris);
+  for(let i=0;i<140;i++){let a=rnd()*TAU,r=(670+rnd()*260)*SOLAR_SCALE.planetSpacing;dummy.position.set(Math.cos(a)*r,((rnd()-.5)*140-140)*SOLAR_SCALE.planetSpacing,Math.sin(a)*r);dummy.rotation.set(rnd()*3,rnd()*3,rnd()*3);dummy.scale.set(3+rnd()*15,3+rnd()*9,3+rnd()*12);dummy.updateMatrix();debris.setMatrixAt(i,dummy.matrix);}group.add(debris);
   return {group,planets,update(time,dt){stars.material.uniforms.uTime.value=time;for(let i=0;i<planets.length;i++){planets[i].mesh.material.uniforms.uTime.value=time;}},dispose(){disposeGroup(group);}};
 }
 

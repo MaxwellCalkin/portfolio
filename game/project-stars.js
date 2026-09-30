@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { SOLAR_SCALE } from './solar-scale.js';
+import { withSolarDepth } from './solar-depth.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -14,8 +16,8 @@ import serifData from './assets/heard-typeface.json';
  * Three.js bundled Helvetiker and Droid typefaces retain their upstream licenses.
  */
 export const PROJECT_LANDMARKS = Object.freeze({
-  beacn: { id:'beacn', name:'BEACN', url:'https://beacn.space/', description:'Imagine the future together', position:[0,140,-900], radius:130 },
-  heardUs: { id:'heard-us', name:'Heard', url:'https://heard-us.vercel.app/', description:'Your Voice Matters', position:[150,70,-450], radius:38 },
+  beacn: { id:'beacn', name:'BEACN', url:'https://beacn.space/', description:'Imagine the future together', position:[0,4200,-27000], radius:130*SOLAR_SCALE.landmarkScale },
+  heardUs: { id:'heard-us', name:'Heard', url:'https://heard-us.vercel.app/', description:'Your Voice Matters', position:[4500,2100,-13500], radius:38*SOLAR_SCALE.landmarkScale },
 });
 const TAU=Math.PI*2;
 const fonts={sans:new FontLoader().parse(sansData),serif:new FontLoader().parse(serifData)};
@@ -50,20 +52,20 @@ function label(parent,text,sub,color,width,position){
   const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false,toneMapped:false}));s.scale.set(width,width*160/1024,1);s.position.fromArray(position);parent.add(s);return s;
 }
-function plasmaMaterial(){return new THREE.ShaderMaterial({
+function plasmaMaterial(){return new THREE.ShaderMaterial(withSolarDepth({
   uniforms:{uTime:{value:0}},
   vertexShader:`varying vec3 vP,vN,vW;void main(){vP=position;vN=normalize(mat3(modelMatrix)*normal);vW=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader:`uniform float uTime;varying vec3 vP,vN,vW;
   float noise(vec3 p){return sin(p.x*1.1+sin(p.y*1.8))*sin(p.y*.9+sin(p.z*1.4))*sin(p.z*1.2+sin(p.x*1.3));}
   void main(){vec3 p=normalize(vP);float n=noise(p*8.+vec3(0.,uTime*.075,uTime*.05));float fine=noise(p*25.+n*2.+uTime*.09);float vein=pow(max(0.,1.-abs(n+fine*.27)),11.);float rim=pow(1.-max(0.,dot(normalize(vN),normalize(cameraPosition-vW))),2.5);vec3 base=mix(vec3(.16,.09,.32),vec3(.50,.34,.7),n*.5+.5);base+=vec3(.7,.68,.42)*vein*.42;base=mix(base,vec3(.75,.87,.93),rim*.7);gl_FragColor=vec4(base,1.);}`,
-});}
+}));}
 function stellarDust(parent,radius,count,color){
   const data=new Float32Array(count*3);
   for(let i=0;i<count;i++){const a=i*2.399963229728653,y=1-2*(i+.5)/count,r=Math.sqrt(1-y*y),d=radius*(1+.10*Math.sin(i*17.731));data.set([Math.cos(a)*r*d,y*d,Math.sin(a)*r*d],i*3);}
-  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(data,3));return new THREE.Points(geo,new THREE.PointsMaterial({color,size:1.1,transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending}));
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(data,3));return new THREE.Points(geo,new THREE.PointsMaterial({color,size:1.1*SOLAR_SCALE.landmarkScale,transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending}));
 }
 function createBeacn(parent){
-  const spec=PROJECT_LANDMARKS.beacn,group=new THREE.Group();group.name='BEACN — the collective-future sun';group.position.fromArray(spec.position);parent.add(group);
+  const spec=PROJECT_LANDMARKS.beacn,group=new THREE.Group();group.name='BEACN — the collective-future sun';group.position.fromArray(spec.position);group.scale.setScalar(SOLAR_SCALE.landmarkScale);parent.add(group);
   group.userData.projectId='beacn';group.userData.url=spec.url;
   const ivory=surface('#d5f5e7','#b0e3e1',1.1),frame=surface('#586781','#476b85',.17),violet=surface('#a6a7e5','#ae8dea',.72);
   const sculpt=new THREE.Group();group.add(sculpt);sculpt.rotation.y=-.1;sculpt.rotation.x=.08;
@@ -88,7 +90,7 @@ function createBeacn(parent){
   return {...spec,position:group.position,radius:spec.radius,group,update(time){plasma.uniforms.uTime.value=time;core.rotation.y=time*.018;backRing.rotation.z=time*.025;backRing2.rotation.z=-time*.021;particles.rotation.y=time*.013;particles.rotation.z=time*.005;centerGlow.material.opacity=.20+Math.sin(time*.8)*.035;aura.material.opacity=.42+Math.sin(time*.27)*.035;word.rotation.y=Math.sin(time*.15)*.015;}};
 }
 function createHeard(parent){
-  const spec=PROJECT_LANDMARKS.heardUs,group=new THREE.Group();group.position.fromArray(spec.position);group.name='Heard — the civic-signal beacon';parent.add(group);group.userData.projectId='heard-us';group.userData.url=spec.url;
+  const spec=PROJECT_LANDMARKS.heardUs,group=new THREE.Group();group.position.fromArray(spec.position);group.scale.setScalar(SOLAR_SCALE.landmarkScale);group.name='Heard — the civic-signal beacon';parent.add(group);group.userData.projectId='heard-us';group.userData.url=spec.url;
   const navy=surface('#102334','#132a40',.25),gold=surface('#cfad55','#ad7830',.45),bright=surface('#f1deb0','#f7d78a',1.0),ink=surface('#182a39','#213c50',.08);
   const orb=mesh(new THREE.SphereGeometry(22,48,32),navy,group);
   const bands=[];

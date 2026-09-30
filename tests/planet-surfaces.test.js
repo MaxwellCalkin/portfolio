@@ -57,7 +57,9 @@ test('individual and instanced object poses follow each actual planetary radial 
       const actual = up.clone().applyQuaternion(object.getWorldQuaternion(new THREE.Quaternion()));
       assert.ok(actual.dot(surface.normalAt(object.getWorldPosition(new THREE.Vector3()))) > .999999, object.name);
     }
-    if (object.isInstancedMesh) for (let i = 0; i < object.count; i++) {
+    // Shared archive pools contain offset posts and animated halo/core parts.
+    // Their assembly anchor is checked above; loose scenery is radial per item.
+    if (object.isInstancedMesh && !object.userData.radialAssembly) for (let i = 0; i < object.count; i++) {
       object.getMatrixAt(i, matrix); const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(); matrix.decompose(position, quaternion, scale);
       assert.ok(up.clone().applyQuaternion(quaternion).dot(surface.normalAt(position)) > .99999, `${object.name}[${i}]`);
     }

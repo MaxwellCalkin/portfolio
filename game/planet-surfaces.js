@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createSphericalTerrain } from './spherical-terrain.js';
+import { createSurfaceStreaming } from './surface-streaming.js';
 
 const TAU = Math.PI * 2, EPSILON = 1e-8, SKIN = .002;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -148,49 +149,6 @@ function surfaceFor(planet, index) {
   const rockMat = standard(theme.rock, { flatShading: true }), floraMat = standard(theme.flora, { emissive: theme.flora, emissiveIntensity: .13, roughness: .43, metalness: .35, flatShading: true });
   const structureMat = standard('#253d43', { roughness: .76, metalness: .34 });
   const trim = standard(spec.color, { emissive: spec.color, emissiveIntensity: .5, metalness: .4 });
-  const dummy = new THREE.Object3D();
-  function points(localCount, globalCount, minimum = 23) {
-    const positions = [];
-    for (let i = 0; i < localCount; i++) {
-      const angle = rnd() * TAU, distance = minimum + Math.pow(rnd(), .8) * Math.min(110, terrain.radius * .75);
-      let x = Math.cos(angle) * distance, z = Math.sin(angle) * distance;
-      if (Math.abs(x) < 12 && z > -40 && z < 46) x += Math.sign(x || 1) * 18;
-      // Clear architectural footprints as well as the central arrival/boarding route.
-      if ((x + 38) ** 2 + (z + 55) ** 2 < 200 || (x - 58) ** 2 + (z + 72) ** 2 < 220) x += 20;
-      positions.push(terrain.patchPoint(x, z));
-    }
-    for (let i = 0; i < globalCount; i++) {
-      const y = 1 - 2 * (i + .5) / globalCount, angle = i * Math.PI * (3 - Math.sqrt(5)) + rnd() * .2;
-      const dir = new THREE.Vector3(Math.cos(angle) * Math.sqrt(1 - y * y), y, Math.sin(angle) * Math.sqrt(1 - y * y));
-      if (dir.dot(terrain.siteUp) > Math.cos(125 / terrain.radius)) continue;
-      positions.push(terrain.center.clone().addScaledVector(dir, terrain.radiusAt(dir)));
-    }
-    return positions;
-  }
-  function pose(at, lift = 0, yaw = 0, scale = new THREE.Vector3(1, 1, 1)) {
-    const frame = terrain.frameAt(at); dummy.position.copy(at).addScaledVector(frame.up, lift); dummy.quaternion.copy(frame.quaternion).multiply(new THREE.Quaternion().setFromAxisAngle(UP, yaw)); dummy.scale.copy(scale); dummy.updateMatrix(); return frame;
-  }
-  const rockPositions = points(125, 115), rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), rockMat, rockPositions.length); rocks.name = 'radial-boulders';
-  rockPositions.forEach((at, i) => {
-    const s = .55 + rnd() * 2.1, frame = pose(at, s * .32, rnd() * TAU, new THREE.Vector3(s, s * .73, s)); rocks.setMatrixAt(i, dummy.matrix);
-    collision.addCollider({ position: at.clone().addScaledVector(frame.up, s * .38), radius: s * .83, kind: 'boulder' });
-  });
-  group.add(rocks);
-  const crystalGeo = new THREE.CylinderGeometry(0, .7, 4, 5, 1); crystalGeo.translate(0, 2, 0);
-  const crystalPositions = points(112, 85), crystals = new THREE.InstancedMesh(crystalGeo, floraMat, crystalPositions.length); crystals.name = 'radial-mineral-blooms';
-  crystalPositions.forEach((at, i) => {
-    const s = .4 + rnd() * .95, tall = s * (.9 + rnd() * 1.1), frame = pose(at, -.07, rnd() * TAU, new THREE.Vector3(s, tall, s)); crystals.setMatrixAt(i, dummy.matrix);
-    crystals.setColorAt(i, new THREE.Color(theme.flora).multiplyScalar(.72 + rnd() * .4));
-    collision.addCollider({ a: at.clone().addScaledVector(frame.up, .2 * tall), b: at.clone().addScaledVector(frame.up, 2.6 * tall), radius: .40 * s, kind: 'crystal' });
-  }); group.add(crystals);
-  const treePositions = points(26, 32, 40), stems = new THREE.InstancedMesh(new THREE.CylinderGeometry(.16, .32, 5.5, 7), rockMat, treePositions.length);
-  const caps = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8, 0, TAU, 0, Math.PI * .55), standard(theme.flora), treePositions.length);
-  stems.name = 'radial-umbrella-stems'; caps.name = 'radial-umbrella-canopies';
-  treePositions.forEach((at, i) => {
-    const s = .85 + rnd() * .85, yaw = rnd() * TAU, frame = pose(at, 2.7 * s, yaw, new THREE.Vector3(s, s, s)); stems.setMatrixAt(i, dummy.matrix);
-    pose(at, 5.3 * s, yaw, new THREE.Vector3(2.9 * s, .9 * s, 2.3 * s)); caps.setMatrixAt(i, dummy.matrix);
-    collision.addCollider({ a: at.clone().addScaledVector(frame.up, .2), b: at.clone().addScaledVector(frame.up, 5.3 * s), radius: .24 * s, kind: 'flora-stem' });
-  }); group.add(stems, caps);
   for (const [x, z, scale, yaw] of [[-38, -55, 1.15, -.24], [58, -72, 1.6, .53]]) {
     const ruin = radialGroup(terrain, group, x, z, 'radial-observatory-arch', yaw);
     const shape = new THREE.Shape(); shape.moveTo(-5, 0); shape.lineTo(-5, 12); shape.quadraticCurveTo(0, 17, 5, 12); shape.lineTo(5, 0); shape.lineTo(3.75, 0); shape.lineTo(3.75, 10.6); shape.quadraticCurveTo(0, 14.3, -3.75, 10.6); shape.lineTo(-3.75, 0); shape.closePath();
@@ -232,6 +190,8 @@ function surfaceFor(planet, index) {
   const moteGeo = new THREE.BufferGeometry(); moteGeo.setAttribute('position', new THREE.Float32BufferAttribute(motePositions, 3));
   const motes = new THREE.Points(moteGeo, new THREE.PointsMaterial({ color: theme.flora, size: .075, transparent: true, opacity: .55, depthWrite: false })); group.add(motes);
   group.traverse(object => { if (object.isMesh) { object.castShadow = true; object.receiveShadow = true; } });
+  const streaming = createSurfaceStreaming({ terrain, collision, group, index, theme, materials: { rockMat, floraMat, structureMat, trim } });
+  streaming.update(0, 0, terrain.patchPoint(0, 15));
   function setParkedShip(ship) {
     for (const [id, collider] of collision.colliders) if (collider.kind === 'parked-ship') collision.removeCollider(id);
     if (!ship) return;
@@ -250,10 +210,12 @@ function surfaceFor(planet, index) {
     });
   }
   return { ...terrain, ...collision, group, beaconPosition: terrain.patchPoint(0, -12), spawn: terrain.patchPoint(0, 15), shipPosition: terrain.patchPoint(0, 25, 1.9), setParkedShip,
-    update(time) { core.rotation.y = time * .4; core.rotation.z = Math.sin(time * .5) * .15; core.position.y = 2.45 + Math.sin(time * 1.5) * .16; halo.rotation.z = time * .3; halo.rotation.x = Math.PI / 2 + Math.sin(time * .4) * .25; motes.material.opacity = .5 + Math.sin(time * .4) * .1; },
-    dispose() { group.removeFromParent(); const geometries = new Set(), materials = new Set(); group.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); collision.colliders.clear(); },
+    worldCatalog: streaming.catalog, nearestShrine: streaming.catalog.nearestShrine, nearbySectors: streaming.catalog.nearbySectors,
+    getStreamingStats: streaming.getStats,
+    update(time, dt = 0, focusPosition) { streaming.update(time, dt, focusPosition); core.rotation.y = time * .4; core.rotation.z = Math.sin(time * .5) * .15; core.position.y = 2.45 + Math.sin(time * 1.5) * .16; halo.rotation.z = time * .3; halo.rotation.x = Math.PI / 2 + Math.sin(time * .4) * .25; motes.material.opacity = .5 + Math.sin(time * .4) * .1; },
+    dispose() { streaming.dispose(); group.removeFromParent(); const geometries = new Set(), materials = new Set([rockMat, floraMat, structureMat, trim]); group.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); collision.colliders.clear(); },
   };
 }
 
-/** Build once. The same terrain, settlements, and obstacles persist during flight and walking. */
+/** Terrain stays persistent. Local scenery and physical archive duplicates stream over its exact mesh. */
 export function createPlanetSurfaces(planets) { return new Map(planets.map((planet, index) => [planet.id ?? planet.spec.id, surfaceFor(planet, index)])); }
