@@ -48,14 +48,14 @@ function orientation(forward, up) {
  * Speed-preserving evasive loop: one continuous 360° vertical backward loop.
  * Returns null while stationary. No input vectors are mutated.
  */
-export function createLoop(position, forward, speed) {
+export function createLoop(position, forward, speed, entryUp = UP) {
   speed = Math.abs(Number(speed));
   if (!Number.isFinite(speed) || speed < 8) return null;
   const start = vec(position), direction = vec(forward);
   if (direction.lengthSq() < 1e-9) return null;
   direction.normalize();
   // Project global up onto the flight plane; vertical starts use a stable fallback.
-  const up = UP.clone().addScaledVector(direction, -UP.dot(direction));
+  const up = vec(entryUp).addScaledVector(direction, -vec(entryUp).dot(direction));
   if (up.lengthSq() < 1e-6) up.set(0, 0, 1).addScaledVector(direction, -direction.z);
   up.normalize();
   const duration = 1.65;
