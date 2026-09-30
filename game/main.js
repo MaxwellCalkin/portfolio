@@ -278,7 +278,7 @@ function frame(){animation=requestAnimationFrame(frame);const dt=Math.min(clock.
   else if(!isInputBlocked()){runDuration+=dt;boostTimer=Math.max(0,boostTimer-dt);atmosphereCooldown=Math.max(0,atmosphereCooldown-dt);state.loopCooldown=Math.max(0,state.loopCooldown-dt);shotTimer=Math.max(0,shotTimer-dt);state.dashCooldown=Math.max(0,state.dashCooldown-dt);state.recallCooldown=Math.max(0,state.recallCooldown-dt);dashTimer=Math.max(0,dashTimer-dt);invincible=Math.max(0,invincible-dt);damageTimer+=dt;if(damageTimer>6)state.shield=Math.min(100,state.shield+dt*12);
     if(state.mode==='space'){space.update(time,dt);updateSpace(dt);}else{surface.update(time,dt);if(state.vehicle)updatePlanetFlight(dt);else updateSurface(dt);if(state.mode==='surface')updateEnemies(dt);}if(fireHeld||keys.has(' '))shoot();updateProjectiles(dt);updateEffects(dt);updateUltimate(dt);sound.update(state.speed);
   }
-  transition=Math.max(0,transition-dt);if(!reducedMotion&&invincible>0&&state.mode==='surface'&&!state.vehicle)astronaut.visible=Math.floor(time*18)%2===0||dashTimer>0;else astronaut.visible=state.mode==='surface'&&!state.vehicle;
+  transition=Math.max(0,transition-dt);astronaut.visible=state.mode==='surface'&&!state.vehicle;
   for(const {p,button} of planetLabels){if(!state.started||state.mode!=='space'||overlay){button.hidden=true;continue;}const pos=new THREE.Vector3(...p.position);pos.y+=p.radius+9;pos.project(camera);const visible=pos.z<1&&pos.z>-1&&Math.abs(pos.x)<.87&&Math.abs(pos.y)<.76;button.hidden=!visible;if(visible){button.style.left=`${(pos.x*.5+.5)*innerWidth}px`;button.style.top=`${(-pos.y*.5+.5)*innerHeight}px`;}}
   renderer.render(scene,camera);uiTick+=dt;if(uiTick>.09){uiTick=0;pushUI();}
 }
