@@ -1,0 +1,368 @@
+[
+  {
+    "name": "grass_tuft",
+    "kind": "grass",
+    "triangles": 24,
+    "height": 0.407,
+    "radius": 0.224,
+    "collider": null,
+    "materials": [
+      "Grass"
+    ],
+    "notes": "8 curved tapered blades, dark root to full-color tip. Grass is single-sided with terrain (up) normals so it lights like the ground; DoubleSide only with the back-face normal flip disabled."
+  },
+  {
+    "name": "grass_tall",
+    "kind": "grass",
+    "triangles": 36,
+    "height": 0.818,
+    "radius": 0.422,
+    "collider": null,
+    "materials": [
+      "Grass"
+    ],
+    "notes": "12 lush blades. Same Grass setup as grass_tuft."
+  },
+  {
+    "name": "dune_grass",
+    "kind": "grass",
+    "triangles": 20,
+    "height": 0.491,
+    "radius": 0.311,
+    "collider": null,
+    "materials": [
+      "Grass"
+    ],
+    "notes": "6 wiry splayed blades + 2 dry stubs. Same Grass setup as grass_tuft."
+  },
+  {
+    "name": "reed_clump",
+    "kind": "grass",
+    "triangles": 60,
+    "height": 1.29,
+    "radius": 0.376,
+    "collider": null,
+    "materials": [
+      "Grass",
+      "Bark"
+    ],
+    "notes": "8 reed leaves (Grass, same setup as grass_tuft) and 2 cattails with Bark heads."
+  },
+  {
+    "name": "flower_a",
+    "kind": "plant",
+    "triangles": 88,
+    "height": 0.519,
+    "radius": 0.151,
+    "collider": null,
+    "materials": [
+      "Leaf",
+      "Petal",
+      "Glow"
+    ],
+    "notes": "Stem, 3 leaves, 6-petal cupped bloom facing -Y and up with a Glow bead, closed bud. Petals and leaves are single planes: render Leaf/Petal DoubleSide."
+  },
+  {
+    "name": "fern_a",
+    "kind": "plant",
+    "triangles": 120,
+    "height": 0.711,
+    "radius": 0.993,
+    "collider": null,
+    "materials": [
+      "Leaf"
+    ],
+    "notes": "6 arching pinnate fronds (single planes): render Leaf DoubleSide."
+  },
+  {
+    "name": "glow_bulb",
+    "kind": "plant",
+    "triangles": 156,
+    "height": 1.164,
+    "radius": 0.574,
+    "collider": null,
+    "materials": [
+      "Leaf",
+      "Glow"
+    ],
+    "notes": "Lantern plant for bioluminescent nights: 3 arching stems with hanging Glow bulbs under star hoods, 3 basal leaves (Leaf DoubleSide)."
+  },
+  {
+    "name": "bush_round",
+    "kind": "bush",
+    "triangles": 257,
+    "height": 1.282,
+    "radius": 1.136,
+    "collider": null,
+    "materials": [
+      "Leaf",
+      "LeafAlt"
+    ],
+    "notes": "4 clumped foliage blobs: closed cores shingled with broad leaf plates, Leaf with dappled LeafAlt leaves (render DoubleSide). Walk-through, no collider."
+  },
+  {
+    "name": "cactus_alien",
+    "kind": "plant",
+    "triangles": 288,
+    "height": 2.49,
+    "radius": 0.991,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.5,
+      "height": 2.5
+    },
+    "materials": [
+      "Leaf",
+      "Glow"
+    ],
+    "notes": "Bulbous ribbed column with two curving arms, Glow crowns and areole studs. Collider covers the main column."
+  },
+  {
+    "name": "coral_fan",
+    "kind": "plant",
+    "triangles": 151,
+    "height": 0.916,
+    "radius": 0.446,
+    "collider": null,
+    "materials": [
+      "Petal"
+    ],
+    "notes": "Knobby finger coral fanning out in the X-Z plane (faces -Y), cupped toward -Y. Closed tubes; walk-through."
+  },
+  {
+    "name": "tree_round",
+    "kind": "tree",
+    "triangles": 691,
+    "height": 8.019,
+    "radius": 3.429,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.5,
+      "height": 4.0
+    },
+    "materials": [
+      "Bark",
+      "Leaf",
+      "LeafAlt"
+    ],
+    "notes": "Broadleaf tree: S-curved trunk with root flare and a fork, 5 leafy canopy clumps (Leaf with dappled LeafAlt, DoubleSide). Collider = trunk."
+  },
+  {
+    "name": "tree_pine",
+    "kind": "tree",
+    "triangles": 430,
+    "height": 9.15,
+    "radius": 2.917,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.45,
+      "height": 3.0
+    },
+    "materials": [
+      "Bark",
+      "Leaf"
+    ],
+    "notes": "Stylized conifer: 6 stacked drooping scalloped tiers (closed). Collider = trunk."
+  },
+  {
+    "name": "tree_umbrella",
+    "kind": "tree",
+    "triangles": 552,
+    "height": 8.282,
+    "radius": 4.166,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.55,
+      "height": 6.8
+    },
+    "materials": [
+      "Bark",
+      "LeafAlt",
+      "Glow"
+    ],
+    "notes": "Alien mushroom tree: curved stem with a skirt ring, wide scalloped cap, 16 Glow spots underneath. Collider = stem."
+  },
+  {
+    "name": "tree_palm",
+    "kind": "tree",
+    "triangles": 528,
+    "height": 8.865,
+    "radius": 4.962,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.45,
+      "height": 5.0
+    },
+    "materials": [
+      "Bark",
+      "Leaf"
+    ],
+    "notes": "Ringed trunk curving toward +X, 9 pinnate drooping fronds (Leaf DoubleSide: they are seen from below), 3 coconuts. Collider = lower trunk."
+  },
+  {
+    "name": "rock_boulder",
+    "kind": "rock",
+    "triangles": 192,
+    "height": 1.031,
+    "radius": 0.842,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.7,
+      "height": 1.1
+    },
+    "materials": [
+      "Rock"
+    ],
+    "notes": "Rounded boulder with planar chisel facets and soft bevels; sunk 12 cm."
+  },
+  {
+    "name": "rock_slab",
+    "kind": "rock",
+    "triangles": 108,
+    "height": 1.041,
+    "radius": 1.264,
+    "collider": {
+      "type": "cylinder",
+      "radius": 1.1,
+      "height": 1.0
+    },
+    "materials": [
+      "RockDark",
+      "Rock"
+    ],
+    "notes": "3 tilted angular plates, broken corner: Rock tops, RockDark strata sides; low edge buried."
+  },
+  {
+    "name": "rock_spire",
+    "kind": "rock",
+    "triangles": 206,
+    "height": 6.2,
+    "radius": 1.262,
+    "collider": {
+      "type": "cylinder",
+      "radius": 1.0,
+      "height": 6.0
+    },
+    "materials": [
+      "Rock",
+      "RockDark"
+    ],
+    "notes": "Leaning hoodoo spire: hard Rock layers over recessed RockDark bands, chiselled cap."
+  },
+  {
+    "name": "rock_pebbles",
+    "kind": "rock",
+    "triangles": 148,
+    "height": 0.148,
+    "radius": 0.445,
+    "collider": null,
+    "materials": [
+      "Rock",
+      "RockDark"
+    ],
+    "notes": "Cluster of 5 smooth river stones; decor, no collider."
+  },
+  {
+    "name": "mesa_chunk",
+    "kind": "landform",
+    "triangles": 644,
+    "height": 24.6,
+    "radius": 19.976,
+    "collider": {
+      "type": "cylinder",
+      "radius": 15.0,
+      "height": 24.6
+    },
+    "materials": [
+      "Rock",
+      "RockDark"
+    ],
+    "notes": "Mid/far-distance butte: talus skirt, 3 strata (RockDark middle), flat top; ~38 m wide, ~25 m tall. Collider approximates the cliff core."
+  },
+  {
+    "name": "sandstone_arch",
+    "kind": "landform",
+    "triangles": 779,
+    "height": 11.637,
+    "radius": 9.029,
+    "collider": null,
+    "materials": [
+      "Rock",
+      "RockDark"
+    ],
+    "notes": "Natural arch spanning X, opening faces -Y; thin RockDark strata, talus boulders. collider is null so the opening stays walkable: use `colliders` (two leg cylinders, offset in three.js space [x, y, z]).",
+    "colliders": [
+      {
+        "type": "cylinder",
+        "radius": 2.6,
+        "height": 8.0,
+        "offset": [
+          -5.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "type": "cylinder",
+        "radius": 2.6,
+        "height": 8.0,
+        "offset": [
+          5.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  {
+    "name": "crystal_cluster",
+    "kind": "crystal",
+    "triangles": 286,
+    "height": 2.413,
+    "radius": 0.881,
+    "collider": {
+      "type": "cylinder",
+      "radius": 0.8,
+      "height": 2.4
+    },
+    "materials": [
+      "Rock",
+      "Crystal"
+    ],
+    "notes": "7 hexagonal crystals (3 with chamfered edges) on a rock base; flat facets."
+  },
+  {
+    "name": "crystal_spire",
+    "kind": "crystal",
+    "triangles": 218,
+    "height": 10.469,
+    "radius": 2.611,
+    "collider": {
+      "type": "cylinder",
+      "radius": 1.2,
+      "height": 10.5
+    },
+    "materials": [
+      "Rock",
+      "Crystal"
+    ],
+    "notes": "One ~10.5 m chamfered crystal, a leaning companion and 4 small crystals on a rock base."
+  },
+  {
+    "name": "shard",
+    "kind": "collectible",
+    "triangles": 90,
+    "height": 0.85,
+    "radius": 0.382,
+    "collider": {
+      "type": "sphere",
+      "radius": 0.45,
+      "height": 0.9
+    },
+    "materials": [
+      "Crystal",
+      "Glow"
+    ],
+    "notes": "Floating resonance shard: faceted gem + tilted Glow orbit ring. Origin at its center (bob/spin it in code); sphere collider centered on the origin."
+  }
+]
