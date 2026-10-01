@@ -1,3 +1,5 @@
+import { SOLAR_SCALE } from './solar-scale.js';
+
 /** Portfolio copy is drawn from the original site and MaxwellCalkin's profile README.
  * These worlds are narrative navigation, not claims about completed research results. */
 export const PLANETS = [
@@ -6,7 +8,7 @@ export const PLANETS = [
   { id: 'projects', name: 'Projects', title: 'The Workshop', number: '03', color: '#b9a2ff', position: [1575, -175, -280], radius: 145, description: 'Open-source tools for safer intelligence', terrain: 'Crystalline frontier' },
   { id: 'mission', name: 'Mission', title: 'The Horizon', number: '04', color: '#83beff', position: [-1575, -105, 315], radius: 210, description: 'Intelligence in service of the good', terrain: 'Azure ocean world' },
   { id: 'contact', name: 'Contact', title: 'The Signal', number: '05', color: '#f3d28c', position: [140, 350, 1225], radius: 115, description: 'A conversation worth beginning', terrain: 'Golden outpost' },
-];
+].map(planet => ({ ...planet, position: planet.position.map(value => value * SOLAR_SCALE.planetSpacing), radius: planet.radius * SOLAR_SCALE.planetRadius }));
 
 export const ESSAYS = [
   { title: 'What I Mean by the Unfolding', url: 'https://maxwellcalkin.netlify.app/essays/the-unfolding', description: 'On widening and deepening what is genuinely life-giving.' },

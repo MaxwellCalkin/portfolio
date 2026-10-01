@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PLANETS } from './world.js';
 import { earliestTerrainHit } from './terrain-occlusion.js';
+import { GATE_LOCATIONS, INTERCEPTOR_LOCATIONS } from './solar-scale.js';
 
 // Original, asset-free flight playground. All ships face local -Z.
 const TAU = Math.PI * 2;
@@ -192,17 +193,8 @@ function createFighter(variant, assets) {
   return group;
 }
 
-const GATE_POSITIONS = [
-  [0,18,-110], [0,38,-420], [115,70,-745], [375,96,-1025],
-  [720,112,-1030], [1050,62,-820], [1280,-4,-525],
-  [1210,16,25], [860,90,380], [420,180,590],
-  [-70,180,500], [-445,105,255], [-595,70,-190], [-480,36,-610],
-];
-const SPAWNS = [
-  [48,32,-310], [-185,-12,-520], [265,105,-660], [540,150,-1110],
-  [1130,25,-970], [1370,-60,190], [720,160,620], [-550,155,520],
-  [-1100,170,-180], [-1110,250,-1340], [400,260,-1990], [1710,120,-1030],
-];
+const GATE_POSITIONS = GATE_LOCATIONS;
+const SPAWNS = INTERCEPTOR_LOCATIONS;
 
 /**
  * Independent space-combat and race subsystem. Hide group and stop update off-orbit.
@@ -218,14 +210,15 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
   const to = new THREE.Vector3(), target = new THREE.Vector3(), desired = new THREE.Vector3();
   const next = new THREE.Vector3(), normal = new THREE.Vector3(), lead = new THREE.Vector3();
   const facing = new THREE.Quaternion();
-  const obstacles = PLANETS.map(p => ({ position: new THREE.Vector3(...p.position), radius: p.radius }));
+  const obstacles = PLANETS.map(p => ({ position: new THREE.Vector3(...p.position), radius: p.radius * 1.06 + 20 }));
 
   for (let index = 0; index < GATE_POSITIONS.length; index++) {
     const root = new THREE.Group(); root.name = `boost-gate-${index + 1}`;
     root.position.fromArray(GATE_POSITIONS[index]);
     const before = new THREE.Vector3(...GATE_POSITIONS[(index + GATE_POSITIONS.length - 1) % GATE_POSITIONS.length]);
     const after = new THREE.Vector3(...GATE_POSITIONS[(index + 1) % GATE_POSITIONS.length]);
-    const direction = after.sub(before).normalize();
+    const pair = index % 2 ? before : after;
+    const direction = index % 2 ? root.position.clone().sub(pair).normalize() : pair.sub(root.position).normalize();
     if (index < 2) direction.set(0,0,-1);
     root.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), direction);
     const material = assets.basic('#8aeada', { toneMapped: false });
@@ -252,8 +245,9 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
       }
     }
     supports.computeBoundingSphere();strips.computeBoundingSphere();pointers.computeBoundingSphere();
+    const baseScale = index < 2 ? 2.5 : 5; root.scale.setScalar(baseScale);
     group.add(root);
-    rings.push({ mesh:root, index, position:root.position, normal:direction, innerRadius:39.5, material, haloMaterial, markers, cooldown:0, pulse:0, passes:0 });
+    rings.push({ mesh:root, index, position:root.position, normal:direction, innerRadius:39.5*baseScale, baseScale, material, haloMaterial, markers, cooldown:0, pulse:0, passes:0 });
   }
 
   for (let index = 0; index < SPAWNS.length; index++) {
@@ -420,7 +414,7 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
       ring.material.color.set(active ? '#fff0a9' : ring.cooldown > 0 ? '#527e77' : '#8aeada');
       ring.haloMaterial.color.set(active ? '#ffda77' : '#66d9c6');
       ring.haloMaterial.opacity = active ? .12+ring.pulse*.2 : .085+Math.sin(time*2+ring.index)*.035;
-      ring.mesh.scale.setScalar(active ? 1+Math.sin(ring.pulse*Math.PI)*.025 : 1);
+      ring.mesh.scale.setScalar(ring.baseScale*(active ? 1+Math.sin(ring.pulse*Math.PI)*.025 : 1));
     }
     updateEnemies(dt,time,playerPosition,playerDirection,speed);
     for (const bolt of bolts) {
@@ -467,7 +461,7 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
 
   function reset() {
     hasPlayerPrevious = false; elapsed = 0;
-    for (const ring of rings) { ring.cooldown = 0; ring.pulse = 0; ring.passes = 0; ring.mesh.scale.setScalar(1); ring.material.color.set('#8aeada'); }
+    for (const ring of rings) { ring.cooldown = 0; ring.pulse = 0; ring.passes = 0; ring.mesh.scale.setScalar(ring.baseScale); ring.material.color.set('#8aeada'); }
     for (const enemy of enemies) {
       enemy.hp = enemy.maxHp; enemy.alive = true; enemy.mesh.visible = true;
       enemy.mesh.position.copy(enemy.home); enemy.previous.copy(enemy.home); enemy.mesh.scale.setScalar(1);
@@ -486,7 +480,14 @@ export function createSpacePlayground(scene, { onPlayerDamage = () => {}, onEnem
   }
 
   return { group, enemies, rings, update, tryHitSegment, nearestEnemy, reset, dispose,
-    setSurfaces(surfaces) { terrainSurfaces = surfaces == null ? null : Array.from(surfaces instanceof Map ? surfaces.values() : surfaces); },
+    setSurfaces(surfaces) {
+      terrainSurfaces = surfaces == null ? null : Array.from(surfaces instanceof Map ? surfaces.values() : surfaces);
+      if (terrainSurfaces) for (const obstacle of obstacles) {
+        const surface = terrainSurfaces.find(value => value.center.distanceToSquared(obstacle.position) < 1);
+        const bound = surface?.geometry?.boundingSphere;
+        if (bound) obstacle.radius = bound.radius + bound.center.length() + 20;
+      }
+    },
     shoot(origin,direction,damage=30) { return launch(origin,direction,false,damage); },
     clearProjectiles() { hasPlayerPrevious = false; for (const bolt of bolts) { bolt.life=0; bolt.mesh.visible=false; } },
   };

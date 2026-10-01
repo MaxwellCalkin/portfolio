@@ -56,8 +56,10 @@ export function createSphericalTerrain(spec, index = 0) {
   const siteUp = finiteDirection(INITIAL_VIEW.clone().sub(center), new THREE.Vector3(0, 1, 0));
   const siteFrame = tangentFrame(siteUp);
   const siteForward = siteFrame.forward, siteRight = siteFrame.right;
-  const width = Math.max(16, Math.floor(spec.terrainSegments?.width ?? 160));
-  const height = Math.max(8, Math.floor(spec.terrainSegments?.height ?? 96));
+  // Giant worlds get a modest fixed increase in density, rather than 100x the
+  // geometry or per-frame rebuilding. Collision derives from this exact mesh.
+  const width = Math.max(16, Math.floor(spec.terrainSegments?.width ?? (radius > 500 ? 256 : 160)));
+  const height = Math.max(8, Math.floor(spec.terrainSegments?.height ?? (radius > 500 ? 160 : 96)));
   const seed = Math.imul((index + 1) | 0, 198491317);
   const geometry = new THREE.SphereGeometry(radius, width, height);
   geometry.name = `${spec.id ?? 'planet'}-spherical-terrain`;
@@ -74,7 +76,7 @@ export function createSphericalTerrain(spec, index = 0) {
     const siteDistance = angularDistance * radius;
     const wildness = THREE.MathUtils.smoothstep(siteDistance, 42, 115);
     const undulation = continental * .72 + hills * .23 + detail * .05;
-    // Roughly 0.4m of relief at the arrival site, rising to several meters on
+    // Roughly 0.4m of relief at the arrival site, rising to terrain-scale hills on
     // the far hemisphere. The visible sphere, rather than a flat patch, bends
     // continuously beneath the player everywhere.
     return radius + undulation * (.65 + radius * .043 * wildness);
@@ -117,7 +119,7 @@ export function createSphericalTerrain(spec, index = 0) {
   const indices = geometry.index.array, vertices = position.array;
   const inverse = new Float64Array(indices.length * 3);
   const cells = new Int32Array(width * height * 2).fill(-1);
-  let face = 0;
+  let face = 0, minRadialAlignment = 1, maxRadius = 0;
   for (let iy = 0; iy < height; iy++) for (let ix = 0; ix < width; ix++) {
     for (let half = 0; half < 2; half++) {
       if ((iy === 0 && half === 0) || (iy === height - 1 && half === 1)) continue;
@@ -132,6 +134,18 @@ export function createSphericalTerrain(spec, index = 0) {
       inverse[o] = bcX * reciprocal; inverse[o + 1] = bcY * reciprocal; inverse[o + 2] = bcZ * reciprocal;
       inverse[o + 3] = (cy * az - cz * ay) * reciprocal; inverse[o + 4] = (cz * ax - cx * az) * reciprocal; inverse[o + 5] = (cx * ay - cy * ax) * reciprocal;
       inverse[o + 6] = (ay * bz - az * by) * reciprocal; inverse[o + 7] = (az * bx - ax * bz) * reciprocal; inverse[o + 8] = (ax * by - ay * bx) * reciprocal;
+      // On each planar triangle, the smallest face-normal/radial alignment
+      // occurs at a vertex. This bounds the metric of the entire rendered shell,
+      // including slopes, so the world catalog can prove its shrine coverage.
+      const nx = inverse[o] + inverse[o + 3] + inverse[o + 6];
+      const ny = inverse[o + 1] + inverse[o + 4] + inverse[o + 7];
+      const nz = inverse[o + 2] + inverse[o + 5] + inverse[o + 8];
+      const nl = Math.hypot(nx, ny, nz);
+      for (const offset of [ia, ib, ic]) {
+        const x = vertices[offset], y = vertices[offset + 1], z = vertices[offset + 2], r = Math.hypot(x, y, z);
+        maxRadius = Math.max(maxRadius, r);
+        minRadialAlignment = Math.min(minRadialAlignment, (nx * x + ny * y + nz * z) / (nl * r));
+      }
       face++;
     }
   }
@@ -197,5 +211,5 @@ export function createSphericalTerrain(spec, index = 0) {
     const scale = Math.atan2(sine, cosine) * radius / sine;
     return { x: tangent.dot(siteRight) * scale, z: -tangent.dot(siteForward) * scale };
   };
-  return { spec, center, radius, geometry, siteUp, siteForward, siteRight, normalAt, surfaceNormalAt, radiusAt, altitudeAt, groundAt, frameAt, patchPoint, patchCoordinates };
+  return { spec, center, radius, geometry, maxRadius, minRadialAlignment, surfaceMetricBound: maxRadius / minRadialAlignment, terrainSegments: { width, height }, siteUp, siteForward, siteRight, normalAt, surfaceNormalAt, radiusAt, altitudeAt, groundAt, frameAt, patchPoint, patchCoordinates };
 }
