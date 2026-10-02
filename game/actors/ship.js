@@ -193,24 +193,32 @@ export class Ship {
     this.#flames(THREE.MathUtils.clamp(Math.abs(this.speed) / (this.pulse ? 4000 : 400), 0.15, 1.6), this.boost || this.pulse);
   }
 
-  /** Autopilot: cruise to a destination point and hand control back at arrival. */
-  travelTo(target, lookAt, onArrive) {
+  /**
+   * Autopilot along a cubic Bezier (start, c1, c2, end): leave the current
+   * world upward, arrive above the destination from its sky.
+   */
+  travelTo(c1, c2, end, onArrive) {
     this.state = 'autopilot';
-    this.anim = { start: this.object.position.clone(), target: target.clone(), lookAt: lookAt.clone(), t: 0, onArrive };
-    const dist = this.object.position.distanceTo(target);
-    this.anim.duration = THREE.MathUtils.clamp(2.5 + dist / 9000, 3, 9);
+    const start = this.object.position.clone();
+    this.anim = { start, c1: c1.clone(), c2: c2.clone(), end: end.clone(), t: 0, onArrive };
+    const dist = start.distanceTo(end);
+    this.anim.duration = THREE.MathUtils.clamp(3 + dist / 11000, 3.5, 9);
     this.gearTarget = 0;
+  }
+  #bezier(a, k, out) {
+    const u = 1 - k;
+    return out.copy(a.start).multiplyScalar(u * u * u).addScaledVector(a.c1, 3 * u * u * k).addScaledVector(a.c2, 3 * u * k * k).addScaledVector(a.end, k * k * k);
   }
   #autopilot(dt, env) {
     const a = this.anim; a.t += dt;
     const k = Math.min(1, a.t / a.duration), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     const prev = this.object.position.clone();
-    this.object.position.copy(a.start).lerp(a.target, e);
+    this.#bezier(a, e, this.object.position);
     const vel = this.object.position.clone().sub(prev);
     this.speed = vel.length() / Math.max(dt, 1e-3);
     if (vel.lengthSq() > 1e-6) {
       const fwd = vel.clone().normalize(), up = env.radialUp && k > 0.7 ? env.radialUp : this.up(_w);
-      _m.lookAt(new THREE.Vector3(), fwd.clone().negate(), up);
+      _m.lookAt(new THREE.Vector3(), fwd, up); // matrix lookAt: -Z toward target (game forward)
       const target = new THREE.Quaternion().setFromRotationMatrix(_m);
       this.object.quaternion.slerp(target, 1 - Math.exp(-dt * 4));
     }

@@ -1,7 +1,8 @@
 /* The Unfolding: in-game HUD. Editorial type, crisp tactical layout. */
 .u-hud { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity .6s ease; font-family: var(--body); color: var(--cream); }
 body.is-playing .u-hud { opacity: 1; }
-body.is-playing .launch, body.is-playing .world-callout { opacity: 0; pointer-events: none; }
+body.is-playing .launch { opacity: 0; pointer-events: none; }
+.world-callout { display: none !important; }
 .u-hud kbd { font: 700 10px/1 var(--mono); padding: 4px 5px 3px; border: 1px solid rgba(242,238,227,.42); border-radius: 3px; color: var(--cream); background: rgba(7,13,23,.55); letter-spacing: .04em; }
 .u-hud .tiny { font: 400 10px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .u-hud [hidden] { display: none !important; }
@@ -23,12 +24,12 @@ body.is-playing .launch, body.is-playing .world-callout { opacity: 0; pointer-ev
 .u-marker small { font: 700 9px/1 var(--mono); letter-spacing: .08em; color: var(--cream); white-space: nowrap; text-shadow: 0 1px 3px #000; }
 
 /* Objective */
-.u-objective { position: absolute; top: 96px; left: var(--edge); max-width: 340px; display: flex; flex-direction: column; gap: 5px; text-shadow: 0 1px 8px rgba(0,0,0,.55); }
-.u-world { display: inline-flex; align-items: center; gap: 8px; font: 400 10px/1 var(--mono); letter-spacing: .16em; color: var(--muted); }
+.u-objective { position: absolute; top: 96px; left: var(--edge); max-width: 340px; display: flex; flex-direction: column; gap: 5px; text-shadow: 0 1px 3px rgba(4,9,16,.75), 0 0 14px rgba(4,9,16,.45); }
+.u-world { display: inline-flex; align-items: center; gap: 8px; font: 400 10px/1 var(--mono); letter-spacing: .16em; color: rgba(242,238,227,.82); }
 .u-world i { width: 7px; height: 7px; border-radius: 50%; background: var(--world, var(--cyan)); box-shadow: 0 0 8px var(--world, var(--cyan)); }
 .u-objective strong { font: 600 21px/1.15 var(--display); letter-spacing: -.01em; }
 .u-objective > span:not(.u-world):not(.u-progress) { font-size: 13px; color: rgba(242,238,227,.78); }
-.u-progress { display: flex; gap: 14px; margin-top: 4px; font: 400 10px/1 var(--mono); letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.u-progress { display: flex; gap: 14px; margin-top: 4px; font: 400 10px/1 var(--mono); letter-spacing: .1em; color: rgba(242,238,227,.82); text-transform: uppercase; }
 .u-progress span::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: 6px; background: var(--cyan); transform: rotate(45deg) translateY(-1px); }
 .u-progress span + span::before { background: #c9e9ff; border-radius: 50%; transform: none; }
 
@@ -152,8 +153,9 @@ body.is-warp::after { content: ''; position: fixed; inset: 0; pointer-events: no
 body.is-touch .u-controls, body.is-touch .u-crosshair { display: none; }
 body.is-touch .u-abilities { transform: translateX(-50%) scale(.8); transform-origin: bottom; }
 
-/* Panels opened over the game */
-body.is-reading .u-hud { opacity: .25; }
+/* While a discovery card is open, the rest of the HUD steps back. */
+.u-hud > * { transition: opacity .3s ease; }
+body.is-reading .u-hud > :not(.u-card):not(.u-toasts):not(.u-prompt) { opacity: .4; }
 
 @media (max-width: 760px) {
   .u-objective { top: 78px; max-width: 60vw; }
@@ -165,4 +167,53 @@ body.is-reading .u-hud { opacity: .25; }
   .u-abilities { bottom: 12px; left: auto; right: 12px; transform: none; }
   .u-weapon { display: none; }
   .u-prompt { bottom: 300px; }
+}
+
+/* Labels are positioned with a transform from the top-left corner. */
+.u-label { left: 0; top: 0; will-change: transform; }
+.u-card-hint { margin: 12px 0 0; font: 400 11px/1.5 var(--mono); letter-spacing: .04em; color: var(--world, var(--cyan)); }
+
+/* Fade used by travel, respawn and the launch swoop. */
+.u-fade { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .38s ease;
+  background: radial-gradient(circle at 50% 50%, rgba(214,250,244,.35), rgba(7,13,23,.96) 62%); }
+body.is-fading .u-fade { opacity: 1; }
+
+/* Sound toggle shows its state. */
+#sound-toggle.is-on svg path:last-child { opacity: 0; }
+
+/* System map additions. */
+.map-number { display: block !important; margin: 0 0 4px !important; color: var(--muted) !important; font-size: 8px !important; }
+.map-actions { display: flex; flex-direction: column; gap: 8px; }
+.warp-button { color: var(--cream); cursor: pointer; }
+.warp-button:disabled { opacity: .45; cursor: default; }
+.warp-button.is-quiet { border-color: transparent; color: var(--muted); }
+.warp-button:not(:disabled):hover { border-color: var(--cyan); }
+
+/* Journal. */
+.journal-world { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); }
+.journal-world > header { display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center; }
+.journal-world > header .tiny { font-size: 8px; color: var(--planet-color); }
+.journal-world > header h3 { margin: 4px 0 0 !important; font-size: 22px; }
+.journal-count { color: var(--muted) !important; text-align: right; }
+.journal-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.journal-item { padding: 14px 16px; border: 1px dashed rgba(242,238,227,.16); color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+.journal-item strong { font: 500 15px/1.25 var(--display); color: rgba(242,238,227,.55); }
+.journal-item .tiny { font-size: 7px; }
+.journal-item.is-found { border: 1px solid color-mix(in srgb, var(--planet-color) 35%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--planet-color) 7%, transparent), transparent 70%); }
+.journal-item.is-found strong { color: var(--cream); }
+.journal-item.is-found .tiny { color: var(--planet-color); }
+.journal-item p { margin: 2px 0 0 !important; font-size: 12px !important; line-height: 1.6 !important; }
+.journal-item ol { margin: 2px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: #b5c0c8; }
+.journal-item .text-link { font-size: 11px; margin-top: 6px; align-self: flex-start; }
+.as-button { background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--cream); cursor: pointer; padding: 6px 0; text-align: left; }
+
+/* Settings: sliders and selects next to the toggles. */
+.setting input.range { appearance: auto; -webkit-appearance: auto; width: min(220px, 40vw); height: auto; background: none; accent-color: var(--cyan); }
+.setting input.range::after { display: none; content: none; }
+.setting select { background: #08111c; color: var(--cream); border: 1px solid var(--line); padding: 10px 12px; font: 13px var(--body); min-height: 44px; }
+
+@media (max-width: 600px) {
+  .journal-world > header { grid-template-columns: 32px 1fr; }
+  .journal-count { grid-column: 1 / -1; text-align: left; }
+  .journal-list { grid-template-columns: 1fr; }
 }

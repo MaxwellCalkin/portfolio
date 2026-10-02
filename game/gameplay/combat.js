@@ -278,6 +278,7 @@ export class Combat {
         let best = null, bestT = 1;
         for (const e of this.enemies) { const t = segmentSphereHitTime(start, end, e.center, e.radius); if (t !== null && t < bestT) { bestT = t; best = e; } }
         if (best) { hit = true; hitPoint = start.clone().lerp(end, bestT); this.fx.sparks(hitPoint, '#ffd2b0', 6, 5); this.damage(best, p.damage, hitPoint); }
+        else if (this.events.onBoltSegment?.(start, end)) hit = true;
       }
       // Terrain.
       if (!hit && planet) {
