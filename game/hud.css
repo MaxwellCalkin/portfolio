@@ -180,7 +180,6 @@ body.is-reading .u-hud > :not(.u-card):not(.u-toasts):not(.u-prompt) { opacity: 
   .u-toasts { top: 200px; }
   .u-toast { white-space: normal; max-width: 86vw; text-align: center; }
 }
-}
 
 /* Labels are positioned with a transform from the top-left corner. */
 .u-label { left: 0; top: 0; will-change: transform; }
