@@ -55,6 +55,7 @@ export class Ship {
       this.gearDuration = clip.duration;
     }
     this.gear = 1; this.gearTarget = 1;
+    this.flameColors = { base: '#8ff7e4', hot: '#d6fff6' };
     this.velocity = new THREE.Vector3();
     this.speed = 0; this.throttle = 0;
     this.state = 'landed'; // landed | takeoff | flying | landing | autopilot
@@ -65,6 +66,12 @@ export class Ship {
   }
 
   #setGear(v) { if (!this.gearAction) return; this.gearAction.time = Math.min(this.gearDuration - 1e-3, Math.max(0, v * this.gearDuration)); this.mixer.update(0); }
+
+  /** Starforged reward: aurora-tinted engines. */
+  setAurora(on) {
+    this.flameColors = on ? { base: '#c9a6ff', hot: '#ffd6f4' } : { base: '#8ff7e4', hot: '#d6fff6' };
+    for (const f of this.flames) f.glow.material.color.set(on ? '#d9b8ff' : '#8cf0d1');
+  }
 
   /** Parks the ship on the ground at `position` (ground point), facing `forward`. */
   park(position, up, forward) {
@@ -234,7 +241,7 @@ export class Ship {
     for (const f of this.flames) {
       f.flame.visible = power > 0.05;
       f.flame.scale.set(1, 1, power * (0.85 + Math.random() * 0.3));
-      f.flame.material.color.set(hot ? '#d6fff6' : '#8ff7e4');
+      f.flame.material.color.set(hot ? this.flameColors.hot : this.flameColors.base);
       f.glow.material.opacity = Math.min(1, 0.35 + power * 0.5);
       f.glow.scale.setScalar(3 + power * 3);
     }

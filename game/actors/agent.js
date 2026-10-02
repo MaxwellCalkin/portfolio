@@ -188,6 +188,11 @@ export class Agent {
     if (shot) actions[shot.name].setEffectiveWeight(shotWeight);
   }
 
+  /** Starforged reward: aurora-tinted jets. */
+  setAurora(on) {
+    for (const f of this.flames) { f.flame.material.color.set(on ? '#d4b0ff' : '#9ffcea'); f.glow.material.color.set(on ? '#f0b8ff' : '#8cf0d1'); }
+  }
+
   /** World-space muzzle position. */
   muzzleWorld(out = new THREE.Vector3()) { return this.muzzle ? this.muzzle.getWorldPosition(out) : this.root.getWorldPosition(out).addScaledVector(this.root.up, 1.4); }
 }

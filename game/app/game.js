@@ -152,6 +152,7 @@ export class Game {
     };
     this.agent.onFootstep = speed => this.#footstep(speed);
     this.ship.onLanded = () => this.#shipLanded();
+    this.#applyAurora();
     this.#bindTouch();
     this.#bindKeys();
     this.settings.onChange(patch => this.#applySettings(patch));
@@ -823,6 +824,12 @@ export class Game {
     };
   }
 
+  #applyAurora() {
+    let earned = this.journal.data.wardens.length >= 5;
+    try { earned = earned || localStorage.getItem('unfolding-starforged-v1') === 'earned'; } catch { /* storage unavailable */ }
+    this.ship.setAurora(earned); this.agent.setAurora(earned);
+  }
+
   #wardenDefeated(enemy) {
     const id = enemy.planet.spec.id;
     const fresh = this.journal.addWarden(id);
@@ -830,6 +837,7 @@ export class Game {
     this.sound.play('levelUp');
     if (fresh && this.journal.data.wardens.length >= 5) {
       try { localStorage.setItem('unfolding-starforged-v1', 'earned'); } catch { /* ignore */ }
+      this.#applyAurora();
       setTimeout(() => this.panels.open('achievement'), 1600);
     }
   }
