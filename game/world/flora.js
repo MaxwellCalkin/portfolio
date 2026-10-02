@@ -17,7 +17,7 @@ import { CELL_SIZE, STRIDE, cellOf, cellCenter, gridSize } from './flora-cells.j
 export const FLORA_COLORS = {
   philosophy: { Grass: '#5fc48c', Leaf: '#2f9e7c', LeafAlt: '#6fd3a6', Bark: '#5e4b3f', Rock: '#d9e3dc', RockDark: '#8aa39a', Petal: '#ffd38a', Crystal: '#9ff5dc', Glow: '#8cf0d1' },
   experience: { Grass: '#e3bd6b', Leaf: '#7d8f4a', LeafAlt: '#b38b4a', Bark: '#5a3b2e', Rock: '#c86e4c', RockDark: '#7a3f32', Petal: '#ff9a62', Crystal: '#ffb27a', Glow: '#ff9a62' },
-  projects: { Grass: '#a68cec', Leaf: '#7f63d8', LeafAlt: '#c3a2ff', Bark: '#3d3557', Rock: '#5c5080', RockDark: '#3a3354', Petal: '#f0c2ff', Crystal: '#c9a6ff', Glow: '#e2b8ff' },
+  projects: { Grass: '#a68cec', Leaf: '#6f52d0', LeafAlt: '#d2b4ff', Bark: '#2f2846', Rock: '#4d4270', RockDark: '#2e2847', Petal: '#ffc2ef', Crystal: '#d6b8ff', Glow: '#f0c8ff' },
   mission: { Grass: '#5bb3a2', Leaf: '#2c7e88', LeafAlt: '#7cc9c0', Bark: '#4a5566', Rock: '#c3d4e6', RockDark: '#7590b1', Petal: '#9ff0ff', Crystal: '#a9f0ff', Glow: '#83e8ff' },
   contact: { Grass: '#d1b45e', Leaf: '#5f8f4a', LeafAlt: '#9fb85a', Bark: '#6e4a32', Rock: '#c27f52', RockDark: '#8c5233', Petal: '#ffd27a', Crystal: '#ffe3a0', Glow: '#ffd27a' },
 };

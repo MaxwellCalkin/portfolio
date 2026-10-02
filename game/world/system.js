@@ -55,7 +55,7 @@ export const PLANETS = [
     terrain: { kind: 'crystal', seaLevel: null, relief: 1 },
     siteDir: morning([-0.2, 0.9, 0.4], 0.95), siteHeight: 4, // a hollow among crystal ridges
     palette: {
-      sand: '#b7a4e6', grassA: '#9d86e4', grassB: '#bba6f2', grassC: '#7f69c9', dirt: '#6d5a9e',
+      sand: '#a996dc', grassA: '#8069cc', grassB: '#9f8ae3', grassC: '#5d4aa6', dirt: '#55467f',
       rockA: '#5c5080', rockB: '#3d3557', cliff: '#2c2742', seabedShallow: '#6d5a9e', seabedDeep: '#2c2742',
       water: '#7e6be0', waterDeep: '#2b2160', foam: '#f3eaff', glow: '#e2b8ff', path: '#e9e0ff',
     },
