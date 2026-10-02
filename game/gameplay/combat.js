@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createCreature, createBoss } from '../creatures.js';
-import { segmentSphereHitTime } from '../space-playground.js';
+import { segmentSphereHitTime } from '../engine/math.js';
 import { LAYOUTS } from '../world/layout.js';
 import { siteLocalToDir } from '../world/planet-shape.js';
 

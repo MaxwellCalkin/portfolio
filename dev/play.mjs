@@ -12,7 +12,7 @@ const log = [];
 page.on('pageerror', e => log.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
 page.on('console', m => { if (['error', 'warning'].includes(m.type())) log.push(`${m.type()}: ${m.text()}`); });
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:4173${path}`);
+await page.goto(`${process.env.BASE || "http://127.0.0.1:4173"}${path}`);
 const stamp = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
 for (const step of steps) {
   const [kind, a, b] = step.split(':');

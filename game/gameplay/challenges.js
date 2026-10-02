@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { segmentSphereHitTime } from '../space-playground.js';
+import { segmentSphereHitTime } from '../engine/math.js';
 
 /**
  * Two small, personal mini-games on the Experience world:

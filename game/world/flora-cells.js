@@ -129,7 +129,8 @@ export function buildFloraCell(shape, ctx, face, i, j, layerIndices) {
       const dd = tA[0] * al[0] + tA[1] * al[1] + tA[2] * al[2];
       fw[0] = tA[0] - al[0] * dd; fw[1] = tA[1] - al[1] * dd; fw[2] = tA[2] - al[2] * dd;
       const fl = Math.hypot(fw[0], fw[1], fw[2]); fw[0] /= fl; fw[1] /= fl; fw[2] /= fl;
-      rt[0] = al[1] * fw[2] - al[2] * fw[1]; rt[1] = al[2] * fw[0] - al[0] * fw[2]; rt[2] = al[0] * fw[1] - al[1] * fw[0];
+      // right = forward x up, so (right, up, back) is a proper rotation basis.
+      rt[0] = fw[1] * al[2] - fw[2] * al[1]; rt[1] = fw[2] * al[0] - fw[0] * al[2]; rt[2] = fw[0] * al[1] - fw[1] * al[0];
       bk[0] = -fw[0]; bk[1] = -fw[1]; bk[2] = -fw[2];
       quatFromBasis(rt, al, bk, q); quatMulYaw(q, r4 * TAU, q2);
       const ground = sea !== null ? Math.max(h, sea) : h;
