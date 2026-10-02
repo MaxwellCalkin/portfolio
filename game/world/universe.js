@@ -6,6 +6,7 @@ import { PlanetTerrain, TerrainWorkerPool } from './terrain-lod.js';
 import { createTerrainMaterial } from './terrain-material.js';
 import { createAtmosphereShell, createAtmosphereUniforms, fogPalette } from './atmosphere.js';
 import { createNebula, createStarfield, createSun } from './space.js';
+import { createCloudLayer } from './clouds.js';
 
 /**
  * The whole star system: planets (LOD terrain + atmosphere), the space
@@ -32,8 +33,10 @@ export class Universe {
       const terrain = new PlanetTerrain({ spec, shape, material, pool: this.pool, N: quality === 'low' ? 24 : 32, splitK: quality === 'low' ? 0.8 : 1.0 });
       const shell = createAtmosphereShell(spec, atmo);
       shell.position.fromArray(spec.position);
+      const clouds = (spec.clouds ?? 0) > 0.05 ? createCloudLayer(spec, atmo) : null;
       this.group.add(terrain.group, shell);
-      return { spec, shape, terrain, atmo, shell, material, fog, center: new THREE.Vector3(...spec.position) };
+      if (clouds) this.group.add(clouds);
+      return { spec, shape, terrain, atmo, shell, clouds, material, fog, center: new THREE.Vector3(...spec.position) };
     });
 
     // Lighting: a directional sun whose shadow frustum follows the focus point,
@@ -74,6 +77,7 @@ export class Universe {
     for (const p of this.planets) {
       p.atmo.uCamPlanet.value.copy(camera.position).sub(p.center);
       p.material.userData.uniforms.uTime.value = time;
+      if (p.clouds) p.clouds.material.uniforms.uTime.value = time;
       // LOD follows the camera (what you see) but never coarser than needed under the player.
       p.terrain.update(camera.position);
     }
