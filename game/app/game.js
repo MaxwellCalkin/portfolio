@@ -577,8 +577,9 @@ export class Game {
   }
 
   #interact() {
-    if (this.card && this.card.primary && this.card.poi.position.distanceTo(this.player.position) < 6) { this.card.primary(); return; }
     const poi = this.#nearestPoi();
+    // A second press acts on the open card, unless another landmark is now closer.
+    if (this.card?.primary && (!poi || poi === this.card.poi) && this.card.poi.position.distanceTo(this.player.position) < 6) { this.card.primary(); return; }
     if (poi) { this.#read(poi); return; }
     if (this.#nearShip()) { this.#board(); return; }
   }
@@ -606,7 +607,10 @@ export class Game {
     }
     if (d.link) { primary = () => this.#openLink(d.link); actions.push({ label: d.linkLabel || 'Open', href: d.link, key: 'E' }); }
     if (d.links) { primary = () => this.#openLink(d.links[0].url); d.links.forEach((l, i) => actions.push({ label: l.label, href: l.url, key: i === 0 ? 'E' : null, ghost: i > 0 })); }
-    this.hud.showCard(d.id, { eyebrow: d.eyebrow, title: d.title, text: d.text, list: d.list, hint: d.hint || (d.challenge === 'arena' && this.journal.data.arenaBest ? `Best time ${formatTime(this.journal.data.arenaBest)}` : ''), actions, count: `${prog.found} / ${prog.total} ON ${this.planet.spec.name.toUpperCase()}${fresh ? ' · NEW' : ''}` });
+    let hint = d.hint || '';
+    if (d.id === 'experience:bass') hint = this.journal.data.riff ? 'You found the groove. Press B to air bass.' : 'Step on the pads to play (1 to 8, left to right). The groove: 1, 4, 5, 4, 6, 5.';
+    if (d.challenge === 'arena') hint = this.journal.data.arenaBest ? `Best time ${formatTime(this.journal.data.arenaBest)}. Hit 8 targets in 35 seconds.` : 'Hit 8 targets in 35 seconds.';
+    this.hud.showCard(d.id, { eyebrow: d.eyebrow, title: d.title, text: d.text, list: d.list, hint, actions, count: `${prog.found} / ${prog.total} ON ${this.planet.spec.name.toUpperCase()}${fresh ? ' · NEW' : ''}` });
     this.card = { poi, primary, id: d.id };
     this.canvas.dataset.discoveries = String(this.journal.progress().found);
   }
