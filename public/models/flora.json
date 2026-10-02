@@ -9,6 +9,8 @@
     "materials": [
       "Grass"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "8 curved tapered blades, dark root to full-color tip. Grass is single-sided with terrain (up) normals so it lights like the ground; DoubleSide only with the back-face normal flip disabled."
   },
   {
@@ -21,6 +23,8 @@
     "materials": [
       "Grass"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "12 lush blades. Same Grass setup as grass_tuft."
   },
   {
@@ -33,6 +37,8 @@
     "materials": [
       "Grass"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "6 wiry splayed blades + 2 dry stubs. Same Grass setup as grass_tuft."
   },
   {
@@ -46,6 +52,8 @@
       "Grass",
       "Bark"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "8 reed leaves (Grass, same setup as grass_tuft) and 2 cattails with Bark heads."
   },
   {
@@ -60,6 +68,8 @@
       "Petal",
       "Glow"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "Stem, 3 leaves, 6-petal cupped bloom facing -Y and up with a Glow bead, closed bud. Petals and leaves are single planes: render Leaf/Petal DoubleSide."
   },
   {
@@ -72,6 +82,8 @@
     "materials": [
       "Leaf"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "6 arching pinnate fronds (single planes): render Leaf DoubleSide."
   },
   {
@@ -85,20 +97,24 @@
       "Leaf",
       "Glow"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "Lantern plant for bioluminescent nights: 3 arching stems with hanging Glow bulbs under star hoods, 3 basal leaves (Leaf DoubleSide)."
   },
   {
     "name": "bush_round",
     "kind": "bush",
-    "triangles": 257,
-    "height": 1.282,
-    "radius": 1.136,
+    "triangles": 260,
+    "height": 1.357,
+    "radius": 1.243,
     "collider": null,
     "materials": [
       "Leaf",
       "LeafAlt"
     ],
-    "notes": "4 clumped foliage blobs: closed cores shingled with broad leaf plates, Leaf with dappled LeafAlt leaves (render DoubleSide). Walk-through, no collider."
+    "far": "bush_round_far",
+    "farTriangles": 65,
+    "notes": "3 soft clumped foliage masses + 1 LeafAlt highlight lobe; closed meshes (single-sided safe). Walk-through, no collider."
   },
   {
     "name": "cactus_alien",
@@ -115,6 +131,8 @@
       "Leaf",
       "Glow"
     ],
+    "far": "cactus_alien_far",
+    "farTriangles": 70,
     "notes": "Bulbous ribbed column with two curving arms, Glow crowns and areole studs. Collider covers the main column."
   },
   {
@@ -127,14 +145,16 @@
     "materials": [
       "Petal"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "Knobby finger coral fanning out in the X-Z plane (faces -Y), cupped toward -Y. Closed tubes; walk-through."
   },
   {
     "name": "tree_round",
     "kind": "tree",
-    "triangles": 691,
-    "height": 8.019,
-    "radius": 3.429,
+    "triangles": 689,
+    "height": 8.559,
+    "radius": 3.249,
     "collider": {
       "type": "cylinder",
       "radius": 0.5,
@@ -145,7 +165,9 @@
       "Leaf",
       "LeafAlt"
     ],
-    "notes": "Broadleaf tree: S-curved trunk with root flare and a fork, 5 leafy canopy clumps (Leaf with dappled LeafAlt, DoubleSide). Collider = trunk."
+    "far": "tree_round_far",
+    "farTriangles": 169,
+    "notes": "Broadleaf tree: S-curved trunk with root flare and a fork, 5 soft clumped foliage masses + 3 LeafAlt highlight lobes (closed meshes). Collider = trunk."
   },
   {
     "name": "tree_pine",
@@ -162,6 +184,8 @@
       "Bark",
       "Leaf"
     ],
+    "far": "tree_pine_far",
+    "farTriangles": 102,
     "notes": "Stylized conifer: 6 stacked drooping scalloped tiers (closed). Collider = trunk."
   },
   {
@@ -180,6 +204,8 @@
       "LeafAlt",
       "Glow"
     ],
+    "far": "tree_umbrella_far",
+    "farTriangles": 134,
     "notes": "Alien mushroom tree: curved stem with a skirt ring, wide scalloped cap, 16 Glow spots underneath. Collider = stem."
   },
   {
@@ -197,6 +223,8 @@
       "Bark",
       "Leaf"
     ],
+    "far": "tree_palm_far",
+    "farTriangles": 132,
     "notes": "Ringed trunk curving toward +X, 9 pinnate drooping fronds (Leaf DoubleSide: they are seen from below), 3 coconuts. Collider = lower trunk."
   },
   {
@@ -213,6 +241,8 @@
     "materials": [
       "Rock"
     ],
+    "far": "rock_boulder_far",
+    "farTriangles": 48,
     "notes": "Rounded boulder with planar chisel facets and soft bevels; sunk 12 cm."
   },
   {
@@ -230,24 +260,28 @@
       "RockDark",
       "Rock"
     ],
+    "far": "rock_slab_far",
+    "farTriangles": 23,
     "notes": "3 tilted angular plates, broken corner: Rock tops, RockDark strata sides; low edge buried."
   },
   {
     "name": "rock_spire",
     "kind": "rock",
-    "triangles": 206,
-    "height": 6.2,
-    "radius": 1.262,
+    "triangles": 240,
+    "height": 5.642,
+    "radius": 1.703,
     "collider": {
       "type": "cylinder",
       "radius": 1.0,
-      "height": 6.0
+      "height": 5.6
     },
     "materials": [
       "Rock",
       "RockDark"
     ],
-    "notes": "Leaning hoodoo spire: hard Rock layers over recessed RockDark bands, chiselled cap."
+    "far": "rock_spire_far",
+    "farTriangles": 60,
+    "notes": "Organic leaning hoodoo spire: one irregular column with dipping strata (soft eroded waists with RockDark undercuts under chunky lopsided Rock caprock ledges), chiselled flank facets and peak."
   },
   {
     "name": "rock_pebbles",
@@ -260,6 +294,8 @@
       "Rock",
       "RockDark"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "Cluster of 5 smooth river stones; decor, no collider."
   },
   {
@@ -277,6 +313,8 @@
       "Rock",
       "RockDark"
     ],
+    "far": "mesa_chunk_far",
+    "farTriangles": 159,
     "notes": "Mid/far-distance butte: talus skirt, 3 strata (RockDark middle), flat top; ~38 m wide, ~25 m tall. Collider approximates the cliff core."
   },
   {
@@ -290,6 +328,8 @@
       "Rock",
       "RockDark"
     ],
+    "far": "sandstone_arch_far",
+    "farTriangles": 186,
     "notes": "Natural arch spanning X, opening faces -Y; thin RockDark strata, talus boulders. collider is null so the opening stays walkable: use `colliders` (two leg cylinders, offset in three.js space [x, y, z]).",
     "colliders": [
       {
@@ -329,6 +369,8 @@
       "Rock",
       "Crystal"
     ],
+    "far": "crystal_cluster_far",
+    "farTriangles": 69,
     "notes": "7 hexagonal crystals (3 with chamfered edges) on a rock base; flat facets."
   },
   {
@@ -346,6 +388,8 @@
       "Rock",
       "Crystal"
     ],
+    "far": "crystal_spire_far",
+    "farTriangles": 52,
     "notes": "One ~10.5 m chamfered crystal, a leaning companion and 4 small crystals on a rock base."
   },
   {
@@ -363,6 +407,8 @@
       "Crystal",
       "Glow"
     ],
+    "far": null,
+    "farTriangles": null,
     "notes": "Floating resonance shard: faceted gem + tilted Glow orbit ring. Origin at its center (bob/spin it in code); sphere collider centered on the origin."
   }
 ]

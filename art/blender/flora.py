@@ -5,12 +5,18 @@ Builds every asset as its own top-level object (object name = glTF node name), o
 base center on the ground (z = 0), facing -Y, then exports
 
     public/models/flora.raw.glb   (Blender glTF export)
-    public/models/flora.glb       (gltfpack -cc -kn -km -vpf: meshopt, names kept)
-    public/models/flora.json      (manifest: triangles, height, footprint, collider, slots)
+    public/models/flora.glb       (gltfpack -cc -kn -km -vpf -kv: meshopt, names kept)
+    public/models/flora.json      (manifest: triangles, height, footprint, collider, slots,
+                                   far = name of the far-LOD node or null, farTriangles)
+
+The big assets also get a far LOD, exported in the same file as '<name>_far' (same origin,
+facing and material slots, at most a quarter of the near triangles; see "Far LODs" below).
 
 -vpf keeps positions as floats: every named node then holds its mesh directly, in meters,
 with no hidden dequantization child transform, which is what instancing code wants (it costs
-about 10 KB). Pass --pack-args "-cc -kn -km" for the fully quantized variant.
+about 10 KB). -kv keeps COLOR_0 on primitives whose vertex colors are constant (gltfpack
+drops it otherwise, and a vertexColors material then reads black). Pass
+--pack-args "-cc -kn -km -kv" for the fully quantized variant.
 
 Shading conventions used by every asset (see also common.py):
   * COLOR_0 = grayscale AO x gradient (white = full color): enable vertexColors on the
@@ -235,6 +241,19 @@ def leaf_blade(bm, base, yaw, length, width, rise=0.35, droop=0.3):
     return pairs
 
 
+def frond_spine(base, yaw, length, rise, droop, curl=0.0):
+    """Bezier control points of a frond's rachis arching out along azimuth `yaw`."""
+    out, _ = yaw_dirs(yaw)
+    return (base, base + out * (length * 0.15) + UP * (length * rise),
+            base + out * (length * 0.6) + UP * (length * (rise + 0.05 - curl)),
+            base + out * length + UP * (length * (rise * 0.4 - droop)))
+
+
+def frond_width(width, t, base_taper=0.0):
+    """Leaflet half-width at spine parameter t (0 base .. 1 tip)."""
+    return width * math.sin(math.pi * min(1.0, t * 0.92 + 0.04)) ** 0.8 * C.smoothstep(0.0, base_taper, t)
+
+
 def comb_frond(bm, base, yaw, length, width, rise, droop, segs, fold=0.42, sweep=1.1, curl=0.0,
                base_taper=0.0):
     """Pinnate 'comb' frond: one swept-forward triangle leaflet per side per spine segment.
@@ -244,15 +263,11 @@ def comb_frond(bm, base, yaw, length, width, rise, droop, segs, fold=0.42, sweep
     the next spine vertex; `fold` droops them into a V. Front faces point up. 2 * segs tris.
     """
     out, left = yaw_dirs(yaw)
-    p0 = base
-    p1 = base + out * (length * 0.15) + UP * (length * rise)
-    p2 = base + out * (length * 0.6) + UP * (length * (rise + 0.05 - curl))
-    p3 = base + out * length + UP * (length * (rise * 0.4 - droop))
-    spine = C.bezier_points(p0, p1, p2, p3, segs + 1)
+    spine = C.bezier_points(*frond_spine(base, yaw, length, rise, droop, curl), segs + 1)
     sv = [bm.verts.new(p) for p in spine]
     for i in range(segs):
         t = (i + 1) / segs
-        w = width * math.sin(math.pi * min(1.0, t * 0.92 + 0.04)) ** 0.8 * C.smoothstep(0.0, base_taper, t)
+        w = frond_width(width, t, base_taper)
         tip_c = spine[i].lerp(spine[i + 1], sweep)
         facing = (out * 0.6 + UP).normalized()
         for sgn in (1.0, -1.0):
@@ -264,72 +279,95 @@ def comb_frond(bm, base, yaw, length, width, rise, droop, segs, fold=0.42, sweep
     return spine
 
 
-def leaf_clump(c, R, rng, density=1.0, lats=(84, 58, 30, 4, -24), tilt=0.14, leaf_len=0.74,
-               leaf_w=0.5, squash=0.9, core_tris=30, alt_frac=0.25, rounded=False, slot='Leaf',
-               alt_slot='LeafAlt', ring_scale=None, up_bias=0.45):
-    """A foliage clump that reads as leaves: a small core blob shingled with broad leaf plates.
-
-    Leaves sit in latitude rings (counts follow the ring circumference), all pointing down the
-    clump like shingles with a slight outward tilt, so the silhouette shows leaf tips while the
-    front faces stay consistently lit. Leaf normals are radial from the clump center, which
-    makes each clump shade as one soft volume. `alt_frac` of the leaves (biased to the top)
-    use the LeafAlt slot for a dappled two-tone. Returns [core, leaves, leaves_alt].
-    """
-    c = Vector(c)
-    core_bm = C.blob(c, (R * 0.84, R * 0.84, R * 0.84 * squash), subdivisions=2, lump=0.0)
-    core = C.mesh_object('_core', core_bm, slot)
-    C.decimate(core, target_tris=core_tris)
-    lift_n = UP * up_bias  # bend normals up: undersides catch sky light instead of going black
-    C.set_normals(core, lambda co, n: ((co - c).normalized() + lift_n).normalized())
-    layers = {slot: new_bm(), alt_slot: new_bm()}
-    a_off = rng.uniform(0, TAU)
-    for ri, lat_deg in enumerate(lats):
-        clat = math.cos(math.radians(lat_deg))
-        n = max(3, int(round(TAU * clat * density / (leaf_w * 1.25)))) if lat_deg < 80 else 3
-        scale = ring_scale(lat_deg) if ring_scale else 1.0
-        for k in range(n):
-            az = a_off + (k + 0.5 * (ri % 2)) * TAU / n + rng.uniform(-0.15, 0.15)
-            la = math.radians(lat_deg + rng.uniform(-6, 6))
-            d = Vector((math.cos(la) * math.cos(az), math.cos(la) * math.sin(az), math.sin(la)))
-            if lat_deg >= 80:  # crown leaves spread from the top in different directions
-                t = Vector((math.cos(az), math.sin(az), -0.35)).normalized()
-            else:
-                t = Vector((math.sin(la) * math.cos(az), math.sin(la) * math.sin(az), -math.cos(la)))
-            s = t.cross(d).normalized()
-            L = R * leaf_len * scale * rng.uniform(0.88, 1.12)
-            W = R * leaf_w * scale * rng.uniform(0.88, 1.12)
-            B = c + Vector((d.x, d.y, d.z * squash)) * (R * 0.62)
-            dirv = (t * math.cos(tilt) + d * math.sin(tilt)).normalized()
-            lift = d * (R * 0.1)
-            top_bias = 0.5 + max(0.0, d.z)
-            bm = layers[alt_slot if rng.random() < alt_frac * top_bias else slot]
-            if rounded:
-                P1 = B + dirv * (L * 0.36) + lift
-                P2 = B + dirv * (L * 0.76) + lift * 0.9
-                T = B + dirv * L + lift * 0.5
-                vs = [bm.verts.new(B), bm.verts.new(P1 - s * W * 0.95), bm.verts.new(P1 + s * W * 0.95),
-                      bm.verts.new(P2 - s * W * 0.8), bm.verts.new(P2 + s * W * 0.8), bm.verts.new(T)]
-                faces = [(vs[0], vs[2], vs[1]), (vs[1], vs[2], vs[4], vs[3]), (vs[3], vs[4], vs[5])]
-            else:
-                M = B + dirv * (L * 0.45) + lift
-                vs = [bm.verts.new(B), bm.verts.new(M - s * W), bm.verts.new(M + s * W),
-                      bm.verts.new(B + dirv * L + lift * 0.4)]
-                faces = [(vs[0], vs[2], vs[1]), (vs[1], vs[2], vs[3])]
-            made = [bm.faces.new(f) for f in faces]
-            for f in made:
-                f.normal_update()
-            if made[0].normal.dot(d) < 0.0:  # front faces point out of the clump
-                for f in made:
-                    f.normal_flip()
-    out = [core]
-    for name, bm in layers.items():
-        if len(bm.faces):
-            ob = C.mesh_object('_leaves', bm, name)
-            C.set_normals(ob, lambda co, n: ((co - c).normalized() + lift_n).normalized())
-            out.append(ob)
-        else:
-            bm.free()
+def lobe_dirs(n, rng, zmin=-0.3):
+    """n well-spread unit directions above z = zmin (Fibonacci sphere, lightly jittered)."""
+    golden = math.pi * (3.0 - math.sqrt(5.0))
+    out, k = [], 0
+    while len(out) < n and k < n * 8:
+        z = 1.0 - 2.0 * (k + 0.5) / (n * 2.2)
+        k += 1
+        if z < zmin:
+            continue
+        r = math.sqrt(max(0.0, 1.0 - z * z))
+        a = k * golden + rng.uniform(-0.3, 0.3)
+        out.append(Vector((r * math.cos(a), r * math.sin(a), z)).normalized())
     return out
+
+
+def mass_blobs(bm, c, R, rng, squash=0.8, lobes=7, lobe_r=(0.4, 0.52), lobe_d=(0.6, 0.74),
+               subdivisions=3):
+    """Add one foliage mass's blobs to bm: a core ellipsoid plus `lobes` leaf-cluster lobes."""
+    c = Vector(c)
+    C.blob(c, (R * 0.86, R * 0.86, R * 0.86 * squash), subdivisions=subdivisions, lump=0.0, bm=bm)
+    for d in lobe_dirs(lobes, rng):
+        r = R * rng.uniform(*lobe_r)
+        p = c + Vector((d.x, d.y, d.z * squash)) * (R * rng.uniform(*lobe_d))
+        C.blob(p, (r, r, r * 0.92), subdivisions=subdivisions, lump=0.0, bm=bm)
+
+
+def foliage_mass(name, c, R, rng, target, squash=0.8, lobes=7, lobe_r=(0.4, 0.52),
+                 lobe_d=(0.6, 0.74), smooth=12, slot='Leaf', ground=None, min_tris=24):
+    """One soft, chunky foliage mass, closed and single-sided-safe.
+
+    A core ellipsoid plus `lobes` protruding leaf-cluster lobes are voxel-unioned into one
+    watertight surface, smoothed so the lobes meet in soft fillets (lightly lumpy silhouette)
+    and collapse-decimated to about `target` triangles. ground = (z, softness) flattens the
+    part below z (masses that sit on the ground). Returns the object.
+    """
+    bm = bmesh.new()
+    mass_blobs(bm, c, R, rng, squash, lobes, lobe_r, lobe_d)
+    ob = C.mesh_object(name, bm, slot)
+    C.remesh(ob, R * 0.07)
+    if smooth:
+        C.modifier(ob, 'SMOOTH', factor=0.6, iterations=smooth)
+    if ground is not None:
+        zc, soft = ground
+        for v in ob.data.vertices:
+            if v.co.z < zc:
+                v.co.z = zc + (v.co.z - zc) * soft
+    C.decimate(ob, target_tris=max(min_tris, int(target)))
+    return ob
+
+
+def fit_masses(masses, budget, seed, wood=(), start=1.35, min_tris=24):
+    """Build foliage masses that share `budget` (minus wood) triangles by area (R^2).
+
+    masses: [dict(c, R, slot, ...foliage_mass kwargs)]. Faces hidden inside other masses are
+    removed before counting, and the per-mass targets are refit until everything fits.
+    Every attempt re-seeds identically, so the result is deterministic.
+    """
+    import random
+    wood_tris = sum(C.tri_count(w) for w in wood)
+    areas = [m['R'] ** 2 for m in masses]
+    scale = (budget - wood_tris) / sum(areas) * start
+    for _ in range(30):
+        rng = random.Random(seed)
+        objs = []
+        for k, (m, area) in enumerate(zip(masses, areas)):
+            opts = {key: val for key, val in m.items() if key not in ('c', 'R')}
+            objs.append(foliage_mass(f'_mass{k}', m['c'], m['R'], rng, area * scale,
+                                     min_tris=min_tris, **opts))
+        C.remove_hidden_faces(objs)
+        total = sum(C.tri_count(o) for o in objs) + wood_tris
+        if total <= budget:
+            return objs
+        for o in objs:
+            C.delete(o)
+        scale *= budget / total * 0.98
+    raise RuntimeError('fit_masses: could not fit budget')
+
+
+def soften_masses(objs, masses, canopy_c, mix=(0.72, 0.2, 0.08), up=0.15, top=None):
+    """Outward spherical normals (mostly from each mass center, partly from the canopy
+    center, a touch of the real surface) and a vertical shade gradient (z0, z1)."""
+    cc = Vector(canopy_c)
+    a, b, g = mix
+    for ob, m in zip(objs, masses):
+        c = Vector(m['c'])
+        C.set_normals(ob, lambda co, n, c=c: (co - c).normalized() * a + (co - cc).normalized() * b
+                      + n * g + UP * up)
+        if top is not None:
+            C.set_shade(ob, C.gradient(top[0], top[1], 0.78, 1.0))
 
 
 def bulb_shape(top, length, radius, sides=5, slot='Glow'):
@@ -499,50 +537,29 @@ def glow_bulb(rng):
     return ob, dict(collider=None, finalize=dict(ao=dict(distance=0.2, samples=32, floor=0.6)))
 
 
-def fit_clumps(specs, budget, seed, wood=(), start=1.25, **kw):
-    """Build leaf clumps, shrinking leaf density until clumps + wood fit `budget`.
-
-    specs: [(center, radius, extra kwargs)]. Every attempt re-seeds identically, so the output
-    depends only on the final density (deterministic). Hidden core faces (and wood faces
-    inside cores) are removed before counting. Returns the clump part objects.
-    """
-    import random
-    density = start
-    for _ in range(40):
-        rng = random.Random(seed)
-        parts, cores = [], []
-        for c, R, extra in specs:
-            opts = dict(kw)
-            opts.update(extra)
-            clump = leaf_clump(c, R, rng, density=density, **opts)
-            cores.append(clump[0])
-            parts += clump
-        C.remove_hidden_faces(cores)
-        total = sum(C.tri_count(p) for p in parts) + sum(C.tri_count(w) for w in wood)
-        if total <= budget:
-            return parts, cores
-        for p in parts:
-            C.delete(p)
-        density *= 0.97
-    raise RuntimeError('fit_clumps: could not fit budget')
-
-
 @asset('bush_round', 'bush', 260,
-       notes='4 clumped foliage blobs: closed cores shingled with broad leaf plates, Leaf with '
-             'dappled LeafAlt leaves (render DoubleSide). Walk-through, no collider.')
+       notes='3 soft clumped foliage masses + 1 LeafAlt highlight lobe; closed meshes '
+             '(single-sided safe). Walk-through, no collider.')
 def bush_round(rng):
-    specs = [((0.0, 0.02, 0.86), 0.68, dict(core_tris=34)),
-             ((0.6, -0.32, 0.5), 0.48, dict(core_tris=22)),
-             ((-0.57, -0.27, 0.52), 0.48, dict(core_tris=22)),
-             ((-0.06, 0.54, 0.55), 0.45, dict(core_tris=20))]
-    specs = [((c[0] + rng.uniform(-0.04, 0.04), c[1] + rng.uniform(-0.04, 0.04), c[2]), R, e)
-             for c, R, e in specs]
-    parts, _ = fit_clumps(specs, 260, rng.random(), lats=(84, 56, 26, -6), tilt=0.12,
-                          leaf_len=0.72, leaf_w=0.52, squash=0.92, alt_frac=0.28)
-    ob = C.join(parts, 'bush_round')
-    C.transform(ob, Matrix.Translation((0, 0, -0.1)))  # bed the lowest leaves into the ground
-    return ob, dict(collider=None,
-                    finalize=dict(ao=dict(distance=0.5, samples=64, floor=0.56, smooth=1)))
+    masses = [
+        dict(c=(0.0, 0.02, 0.72), R=0.7, squash=0.82, lobes=7, ground=(0.06, 0.25)),
+        dict(c=(0.62, -0.3, 0.46), R=0.52, squash=0.85, lobes=5, ground=(0.04, 0.25)),
+        dict(c=(-0.58, -0.22, 0.48), R=0.5, squash=0.85, lobes=5, ground=(0.04, 0.25)),
+        dict(c=(0.12, -0.24, 1.22), R=0.34, squash=0.85, lobes=3, lobe_d=(0.4, 0.5),
+             slot='LeafAlt'),
+    ]
+    for m in masses:
+        x, y, z = m['c']
+        m['c'] = (x + rng.uniform(-0.04, 0.04), y + rng.uniform(-0.04, 0.04), z)
+    seed = rng.random()
+    objs = fit_masses(masses, 260, seed)
+    soften_masses(objs, masses, (0.0, 0.0, 0.25), top=(0.0, 1.4))
+    ob = C.join(objs, 'bush_round')
+    zmin = min(v.co.z for v in ob.data.vertices)
+    C.transform(ob, Matrix.Translation((0, 0, -zmin - 0.05)))  # bed the base 5 cm into the ground
+    return ob, dict(collider=None, layout=dict(masses=masses, seed=seed, center=(0.0, 0.0, 0.25),
+                                               top=(0.0, 1.4)),
+                    finalize=dict(ao=dict(distance=0.5, samples=64, floor=0.5, smooth=1)))
 
 
 def ribbed_column(name, pts, radii, ribs, rng, depth=0.2, tip_len=0.55, glow=True):
@@ -575,6 +592,7 @@ def cactus_alien(rng):
     prof = [(-0.08, 0.36), (0.12, 0.44), (0.36, 0.46), (0.62, 0.4), (0.84, 0.31), (0.95, 0.21)]
     pts = [Vector((0, 0, H * z)) for z, _ in prof]
     parts.append(ribbed_column('_main', pts, [r for _, r in prof], 6, rng, depth=0.24))
+    columns = [(pts, [r for _, r in prof])]
     arms = [  # (yaw, attach height, out, up, radius)
         (rng.uniform(0, TAU), 0.95, 0.62, 0.95, 0.24),
         (None, 0.6, 0.55, 0.62, 0.2),
@@ -588,6 +606,7 @@ def cactus_alien(rng):
         apts = C.bezier_points(*P, 4)
         radii = [r * 0.9, r * 1.05, r * 0.95, r * 0.72]
         parts.append(ribbed_column(f'_arm{k}', apts, radii, 5, rng, depth=0.24))
+        columns.append((apts, radii))
     # areoles: small glowing studs on the main column's ridges
     studs = new_bm()
     for k in range(4):
@@ -609,6 +628,7 @@ def cactus_alien(rng):
         C.set_shade(p, C.gradient(0.0, H * 0.4, 0.75, 1.0))
     ob = C.join(parts, 'cactus_alien')
     return ob, dict(collider=dict(type='cylinder', radius=0.5, height=2.5),
+                    layout=dict(columns=columns, H=H),
                     finalize=dict(ao=dict(distance=0.45, samples=48, floor=0.5)))
 
 
@@ -664,8 +684,8 @@ def flare_radial(amount, lobes=3, phase=0.0, rings=1):
 
 
 @asset('tree_round', 'tree', 700,
-       notes='Broadleaf tree: S-curved trunk with root flare and a fork, 5 leafy canopy clumps '
-             '(Leaf with dappled LeafAlt, DoubleSide). Collider = trunk.')
+       notes='Broadleaf tree: S-curved trunk with root flare and a fork, 5 soft clumped foliage '
+             'masses + 3 LeafAlt highlight lobes (closed meshes). Collider = trunk.')
 def tree_round(rng):
     wood = []
     trunk_pts = [Vector((0, 0, -0.2)), Vector((0.16, 0.05, 1.0)), Vector((-0.1, 0.02, 2.1)),
@@ -684,27 +704,43 @@ def tree_round(rng):
         bm, _ = C.tube(pts, [r, r * 0.84, r * 0.68, r * 0.5], sides=sides, cap_start=False,
                        cap_end=True, phase=rng.uniform(0, TAU))
         wood.append(C.mesh_object(f'_limb{k}', bm, 'Bark'))
-    specs = [((0.1, 0.05, 6.75), 2.05, dict(squash=0.8, core_tris=40)),
-             ((1.8, 0.5, 5.6), 1.55, dict(core_tris=30)),
-             ((-1.65, -0.45, 5.35), 1.5, dict(core_tris=30)),
-             ((0.35, 1.6, 5.8), 1.45, dict(core_tris=28)),
-             ((-0.45, -1.6, 6.05), 1.42, dict(core_tris=28))]
-    specs = [(tuple(x + rng.uniform(-0.1, 0.1) for x in c), R, e) for c, R, e in specs]
     for w in wood:
         C.triangulate(w)
+    masses = [
+        dict(c=(0.1, 0.05, 6.6), R=2.0, squash=0.78),
+        dict(c=(1.75, 0.5, 5.55), R=1.5, squash=0.8),
+        dict(c=(-1.6, -0.45, 5.3), R=1.45, squash=0.8),
+        dict(c=(0.35, 1.55, 5.75), R=1.4, squash=0.8),
+        dict(c=(-0.45, -1.55, 6.0), R=1.38, squash=0.8),
+        dict(c=(0.6, -0.5, 7.85), R=0.95, squash=0.82, lobes=3, lobe_d=(0.4, 0.5), slot='LeafAlt'),
+        dict(c=(-0.8, 0.7, 7.55), R=0.8, squash=0.82, lobes=3, lobe_d=(0.4, 0.5), slot='LeafAlt'),
+        dict(c=(1.9, 0.25, 6.55), R=0.72, squash=0.82, lobes=3, lobe_d=(0.4, 0.5), slot='LeafAlt'),
+    ]
+    for m in masses:
+        m['c'] = tuple(x + rng.uniform(-0.08, 0.08) for x in m['c'])
     seed = rng.random()
-    # wood hidden inside the clump cores does not count against the budget
-    probe, cores = fit_clumps(specs, 10 ** 6, seed, start=1.0)
-    C.remove_hidden_faces(wood, occluders=cores)
-    for p in probe:
-        C.delete(p)
-    crown, cores = fit_clumps(specs, 700, seed, wood=wood, start=1.15, lats=(84, 58, 30, 2, -26),
-                              tilt=0.13, leaf_len=0.7, leaf_w=0.5, squash=0.88, alt_frac=0.24)
+    objs = fit_masses(masses, 10 ** 6, seed)        # probe: wood hidden in the masses is free
+    C.remove_hidden_faces(wood, occluders=objs)
+    for o in objs:
+        C.delete(o)
+    objs = fit_masses(masses, 700, seed, wood=wood)
+    soften_masses(objs, masses, (0.1, 0.0, 5.0), top=(3.8, 8.6))
     for w in wood:
         C.set_shade(w, C.gradient(0.0, 4.0, 0.85, 1.0))
-    ob = C.join(wood + crown, 'tree_round')
+        C.set_ao_weight(w, 0.6)
+    ob = C.join(wood + objs, 'tree_round')
     return ob, dict(collider=dict(type='cylinder', radius=0.5, height=4.0),
-                    finalize=dict(ao=dict(distance=2.2, samples=64, floor=0.52, smooth=1)))
+                    layout=dict(masses=masses, seed=seed, trunk=trunk_pts, limbs=limbs,
+                                center=(0.1, 0.0, 5.0), top=(3.8, 8.6)),
+                    finalize=dict(ao=dict(distance=1.8, samples=64, floor=0.45, smooth=1)))
+
+
+def tier_normals(c, cz):
+    """Soft, up-biased dome normals for one conifer tier (center c, normal origin height cz)."""
+    def fn(co, n):
+        d = co - Vector((c.x, c.y, cz))
+        return (Vector((d.x, d.y, d.z * 1.4)).normalized() + UP * 0.55).normalized()
+    return fn
 
 
 @asset('tree_pine', 'tree', 520,
@@ -716,7 +752,7 @@ def tree_pine(rng):
                    [0.42, 0.28, 0.12], sides=6, cap_start=False, end_tip=Vector((0, 0, 8.0)) + lean,
                    radial=flare_radial(0.5, 3, rng.uniform(0, TAU)))
     trunk = C.mesh_object('_trunk', bm, 'Bark')
-    tiers = []
+    tiers, tier_specs = [], []
     spec = [  # (rim z, top z, radius, scallops)
         (1.65, 3.95, 2.7, 8), (2.85, 5.0, 2.25, 7), (3.98, 6.0, 1.86, 7),
         (5.08, 7.0, 1.46, 6), (6.12, 8.0, 1.06, 6), (7.15, 9.15, 0.68, 5),
@@ -742,17 +778,27 @@ def tree_pine(rng):
         for j, v in enumerate(rings[2]):
             v.co.z -= 0.06 * h if j % 2 == 0 else 0.0
         tier = C.mesh_object(f'_tier{k}', bm, 'Leaf')
-        cz = zb + h * 0.22
-
-        def nf(co, nn, cz=cz, c=c):
-            d = co - Vector((c.x, c.y, cz))
-            return (Vector((d.x, d.y, d.z * 1.4)).normalized() + UP * 0.55).normalized()
-        C.set_normals(tier, nf)
+        tier_specs.append((zb, zt, R, n, phase, c))
+        C.set_normals(tier, tier_normals(c, zb + h * 0.22))
         tiers.append(tier)
     C.remove_hidden_faces(tiers + [trunk])
     ob = C.join([trunk] + tiers, 'tree_pine')
     return ob, dict(collider=dict(type='cylinder', radius=0.45, height=3.0),
+                    layout=dict(lean=lean, tiers=tier_specs),
                     finalize=dict(ao=dict(distance=1.5, samples=64, floor=0.5)))
+
+
+def shade_cap(cap, top, R):
+    """Mushroom cap shading: normals half-way to a point under the dome, a dome that lightens
+    toward the center and a slightly darker underside."""
+    cc = top + Vector((0, 0, -0.6))
+    C.set_normals(cap, lambda co, n: n.lerp((co - cc).normalized(), 0.5))
+
+    def shade(co):
+        if co.z <= top.z + 0.1:
+            return 0.9
+        return C.lerp(0.8, 1.0, 1.0 - C.smoothstep(0.3 * R, R, math.hypot(co.x - top.x, co.y - top.y)))
+    C.set_shade(cap, shade)
 
 
 @asset('tree_umbrella', 'tree', 600,
@@ -798,16 +844,13 @@ def tree_umbrella(rng):
                 v.co.y = top.y + (v.co.y - top.y) * lobe
                 v.co.z += 0.08 if j % 2 == 1 else 0.0
     cap = C.mesh_object('_cap', bm, 'LeafAlt')
-    cc = top + Vector((0, 0, -0.6))
-    C.set_normals(cap, lambda co, n: n.lerp((co - cc).normalized(), 0.5))
-    C.set_shade(cap, lambda co: (C.lerp(0.8, 1.0, 1.0 - C.smoothstep(0.3 * R, R, math.hypot(co.x - top.x, co.y - top.y)))
-                                 if co.z > top.z + 0.1 else 0.9))
+    shade_cap(cap, top, R)
     parts.append(cap)
     # bioluminescent spots on the underside, in two staggered rings
     from mathutils.bvhtree import BVHTree
     me = cap.data
     tree = BVHTree.FromPolygons([v.co for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
-    spots = new_bm()
+    spots, spot_list = new_bm(), []
     for ring_i, (rf, count, size) in enumerate(((0.55, 7, 0.27), (0.8, 9, 0.24))):
         for k in range(count):
             a = TAU * (k + 0.5 * ring_i) / count + rng.uniform(-0.1, 0.1)
@@ -819,6 +862,7 @@ def tree_umbrella(rng):
             if nrm.z > 0:
                 nrm = -nrm
             s = size * rng.uniform(0.85, 1.15)
+            spot_list.append((loc.copy(), nrm.copy(), s))
             u, v = C.basis(nrm)
             ring = [spots.verts.new(loc + (u * math.cos(TAU * m / 6) + v * math.sin(TAU * m / 6)) * s - nrm * 0.01)
                     for m in range(6)]
@@ -833,6 +877,7 @@ def tree_umbrella(rng):
     parts.append(glow)
     ob = C.join(parts, 'tree_umbrella')
     return ob, dict(collider=dict(type='cylinder', radius=0.55, height=6.8),
+                    layout=dict(P=P, radii=radii, top=top, R=R, wob=wob, spots=spot_list),
                     finalize=dict(ao=dict(distance=1.4, samples=64, floor=0.45)))
 
 
@@ -865,8 +910,10 @@ def tree_palm(rng):
     C.set_normals(crown, C.radial_normals(crown_c, 1.0))
     parts.append(crown)
     nuts = new_bm()
+    a = rng.uniform(0, TAU)
     for k in range(3):
-        a = rng.uniform(0, TAU) if k == 0 else a + TAU / 3 + rng.uniform(-0.3, 0.3)
+        if k:
+            a += TAU / 3 + rng.uniform(-0.3, 0.3)
         nc = crown_c + polar(0.33, a, -0.3)
         C.blob(nc, (0.17, 0.17, 0.19), subdivisions=1, lump=0.0, bm=nuts)
     coconuts = C.mesh_object('_nuts', nuts, 'Bark')
@@ -874,18 +921,23 @@ def tree_palm(rng):
     parts.append(coconuts)
     bm = new_bm()
     a0 = rng.uniform(0, TAU)
+    frond_specs = []
     for k in range(9):
         yaw = a0 + k * TAU / 9 + rng.uniform(-0.15, 0.15)
         young = k in (0, 5)
-        comb_frond(bm, crown_c + polar(0.15, yaw, 0.22), yaw,
-                   rng.uniform(2.9, 3.5) * (0.82 if young else 1.0), rng.uniform(0.62, 0.7),
-                   rise=0.6 if young else rng.uniform(0.3, 0.44),
-                   droop=0.25 if young else rng.uniform(0.55, 0.85), segs=14, fold=0.55, sweep=1.25)
+        f = dict(base=crown_c + polar(0.15, yaw, 0.22), yaw=yaw,
+                 length=rng.uniform(2.9, 3.5) * (0.82 if young else 1.0), width=rng.uniform(0.62, 0.7),
+                 rise=0.6 if young else rng.uniform(0.3, 0.44),
+                 droop=0.25 if young else rng.uniform(0.55, 0.85))
+        frond_specs.append(f)
+        comb_frond(bm, f['base'], yaw, f['length'], f['width'], rise=f['rise'], droop=f['droop'],
+                   segs=14, fold=0.55, sweep=1.25)
     fronds = C.mesh_object('_fronds', bm, 'Leaf')
     C.set_normals(fronds, dome_normals(crown_c - Vector((0, 0, 1.2)), 0.35))
     parts.append(fronds)
     ob = C.join(parts, 'tree_palm')
     return ob, dict(collider=dict(type='cylinder', radius=0.45, height=5.0),
+                    layout=dict(trunk=(P0, P1, P2, P3), crown=crown_c, fronds=frond_specs),
                     finalize=dict(ao=dict(distance=1.2, samples=48, floor=0.5)))
 
 
@@ -956,6 +1008,92 @@ def strata_paint(top_slot='Rock', top_dot=0.55):
     return lambda p: top_slot if p.normal.z > top_dot else None
 
 
+def organic_column(profile, sides, rng, lean=(0.0, 0.0), twist=0.0, noise_amp=0.1,
+                   base_r=1.0, tip=None, wobble=0.35, dip=0.0, ledge_spread=0.35,
+                   cap_bottom=True, height=None):
+    """Irregular leaning column (bmesh) for spires. Returns (bmesh, kinds).
+
+    profile: [(z, radius scale, kind, ledge, stratum)] bottom to top. A ring with ledge > 0
+    is pushed out by up to that fraction on one broad side (a direction picked per stratum
+    and shared by that stratum's rings), so strata read as lopsided eroded shelves rather
+    than full discs. Ring outlines are irregular (smooth 3D noise), twist with height and
+    follow a leaning, gently S-curved spine (`wobble`). Every ring above the 'foot' is tilted
+    by `dip` radians towards one direction, so the strata dip consistently instead of
+    stacking level. Faces carry an int layer 'band': index of their lower ring + 1 (faces
+    added later, e.g. chisel caps, read 0); kinds[i] is the kind of ring i. The (buried)
+    bottom is capped by default so later chisel cuts always close into flat facets. `height`
+    (default: the last profile z) scales the spine curve, so a reduced profile of the same
+    spire (its far LOD) follows the same lean.
+    """
+    bm = bmesh.new()
+    band = bm.faces.layers.int.new('band')
+    H = height or profile[-1][0]
+    off = (rng.uniform(0, 50), rng.uniform(0, 50), rng.uniform(0, 50))
+    wob = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), 0.0)).normalized() * wobble
+    dip_dir = rng.uniform(0, TAU)
+    tilt = math.tan(dip) * base_r
+    ldir, ldirs = rng.uniform(0, TAU), {}
+    rings, kinds = [], []
+    for z, s, kind, ledge, stratum in profile:
+        t = max(0.0, z) / H
+        cx = lean[0] * t ** 1.5 + wob.x * math.sin(math.pi * t)
+        cy = lean[1] * t ** 1.5 + wob.y * math.sin(math.pi * t)
+        if stratum not in ldirs:  # each stratum's ledge juts out on its own side
+            ldir += rng.uniform(1.6, 3.2)
+            ldirs[stratum] = ldir
+        w = 0.0 if kind == 'foot' else 1.0
+        ring = []
+        for j in range(sides):
+            a = TAU * j / sides + twist * t
+            d = Vector((math.cos(a), math.sin(a), 0.0))
+            k = 1.0 + noise_amp * C.noise3(Vector((d.x * 1.3, d.y * 1.3, z * 0.35)), 1.0, off)
+            if ledge:
+                f = C.clamp((math.cos(a - ldirs[stratum]) + ledge_spread) / (1.0 + ledge_spread))
+                k *= 1.0 + ledge * f ** 1.3
+            r = base_r * s * k
+            zz = z + w * tilt * math.cos(a - dip_dir)
+            ring.append(bm.verts.new(Vector((cx + d.x * r, cy + d.y * r, zz))))
+        rings.append(ring)
+        kinds.append(kind)
+    for i in range(len(rings) - 1):
+        for j in range(sides):
+            k = (j + 1) % sides
+            f = bm.faces.new((rings[i][j], rings[i][k], rings[i + 1][k], rings[i + 1][j]))
+            f[band] = i + 1
+    if tip is not None:
+        apex = bm.verts.new(Vector(tip))
+        for j in range(sides):
+            f = bm.faces.new((rings[-1][j], rings[-1][(j + 1) % sides], apex))
+            f[band] = len(rings)
+    if cap_bottom:
+        bm.faces.new(list(reversed(rings[0])))
+    return bm, kinds
+
+
+def spire_profile(rng, H=6.0, strata=3):
+    """Hoodoo-like strata profile [(z, scale, kind, ledge, stratum)] for organic_column():
+    a flared foot, then per stratum a soft eroded waist under a hard caprock (a ledge with a
+    vertical face: 'lip' to 'lipt') and an inset 'shelf'; irregular stratum heights, widths
+    and ledge sizes, tapering to a point."""
+    prof = [(-0.3, 1.12, 'foot', 0.0, -1), (0.3, 1.0, 'base', 0.0, -1)]
+    z, s = 0.3, 1.0
+    heights = [rng.uniform(0.85, 1.2) for _ in range(strata)]
+    unit = (H * 0.8 - z) / sum(heights)
+    for i, hgt in enumerate(heights):
+        top = z + unit * hgt              # top of this stratum's caprock shelf
+        th = rng.uniform(0.16, 0.24)      # caprock thickness
+        z_lip = top - th - 0.06
+        led = rng.uniform(0.16, 0.28) * (1.0 - 0.3 * i / max(1, strata - 1))
+        prof += [(z + (z_lip - z) * 0.55, s * rng.uniform(0.84, 0.9), 'soft', 0.0, i),
+                 (z_lip, s, 'lip', led, i),
+                 (z_lip + th, s * 0.97, 'lipt', led, i),
+                 (top, s * 0.85, 'shelf', led * 0.25, i)]
+        z = top
+        s *= rng.uniform(0.74, 0.84)
+    prof.append((H * 0.92, s * 0.62, 'top', 0.0, -1))
+    return prof
+
+
 @asset('rock_boulder', 'rock', 200,
        notes='Rounded boulder with planar chisel facets and soft bevels; sunk 12 cm.')
 def rock_boulder(rng):
@@ -970,7 +1108,7 @@ def rock_boulder(rng):
        notes='3 tilted angular plates, broken corner: Rock tops, RockDark strata sides; '
              'low edge buried.')
 def rock_slab(rng):
-    parts = []
+    parts, plates = [], []
     base = C.outline(7, 1.32, 0.82, rng, jitter=0.07, angle_jitter=0.5)
     layers = [  # (z0, z1, scale, offset, rotation, side slot)
         (-0.45, 0.32, 1.0, (0.0, 0.0), 0.0, 'RockDark'),
@@ -982,6 +1120,7 @@ def rock_slab(rng):
         for x, y in base:
             x, y = x * s * rng.uniform(0.93, 1.07), y * s * rng.uniform(0.93, 1.07)
             poly.append((x * math.cos(rot) - y * math.sin(rot) + ox, x * math.sin(rot) + y * math.cos(rot) + oy))
+        plates.append((poly, z0, z1, slot))
         ch = 0.06
         bm, _ = C.extrude_profile(poly, [(z0, 1.0, 0.0), (z1 - ch, 0.98, 0.0), (z1, 0.98, ch)],
                                   bottom=k > 0)
@@ -999,50 +1138,41 @@ def rock_slab(rng):
         C.paint_faces(p, strata_paint())
     ob = C.join(parts, 'rock_slab')
     return ob, dict(collider=dict(type='cylinder', radius=1.1, height=1.0),
+                    layout=dict(plates=plates, xform=Matrix.Translation((0, 0, 0.12)) @ tilt),
                     finalize=dict(weighted=True, ao=dict(distance=0.8, samples=64, floor=0.5)))
 
 
 @asset('rock_spire', 'rock', 260,
-       notes='Leaning hoodoo spire: hard Rock layers over recessed RockDark bands, '
-             'chiselled cap.')
+       notes='Organic leaning hoodoo spire: one irregular column with dipping strata (soft '
+             'eroded waists with RockDark undercuts under chunky lopsided Rock caprock ledges), '
+             'chiselled flank facets and peak.')
 def rock_spire(rng):
-    parts = []
-    base = C.outline(6, 1.1, 0.92, rng, jitter=0.1, angle_jitter=0.45)
-    lean = Vector((0.85, -0.3, 0.0))
-    spec = [  # (z0, z1, scale, hard)
-        (-0.3, 1.5, 1.0, True), (1.42, 1.85, 0.86, False), (1.78, 3.0, 0.86, True),
-        (2.92, 3.3, 0.74, False), (3.22, 4.4, 0.72, True), (4.32, 4.62, 0.6, False),
-        (4.55, 5.5, 0.58, True),
-    ]
-    for k, (z0, z1, s, hard) in enumerate(spec):
-        off = lean * (((z0 + z1) * 0.5) / 6.0) ** 1.4
-        rot = rng.uniform(-0.3, 0.3)
-        poly = []
-        for x, y in base:
-            x, y = x * s * rng.uniform(0.9, 1.1), y * s * rng.uniform(0.9, 1.1)
-            poly.append((x * math.cos(rot) - y * math.sin(rot) + off.x, x * math.sin(rot) + y * math.cos(rot) + off.y))
-        if hard:
-            ch = 0.06 + 0.04 * s
-            levels = [(z0, 1.0, 0.0), (z1 - ch, 0.92, 0.0), (z1, 0.92, ch)]
-        else:
-            levels = [(z0, 1.0, 0.0), (z1, 1.0, 0.0)]
-        # caps that can never be seen (buried, or embedded in the layer below) are omitted:
-        # a big hidden cap would otherwise dominate the weighted normals of the walls
-        bm, _ = C.extrude_profile(poly, levels, bottom=k > 0)
-        parts.append(C.mesh_object(f'_stratum{k}', bm, 'Rock' if hard else 'RockDark'))
-    off = lean * (5.85 / 6.0) ** 1.4
-    cap_poly = [(x * 0.42 + off.x, y * 0.42 + off.y) for x, y in base]
-    bm, rings = C.extrude_profile(cap_poly, [(5.4, 1.0, 0.0), (5.8, 0.75, 0.0)], top=False)
-    apex = bm.verts.new(Vector((off.x + 0.1, off.y - 0.04, 6.2)))
-    ring = rings[-1]
-    for j in range(len(ring)):
-        bm.faces.new((ring[j], ring[(j + 1) % len(ring)], apex))
-    parts.append(C.mesh_object('_cap', bm, 'Rock'))
-    C.remove_hidden_faces(parts)
-    for p in parts:
-        C.paint_faces(p, strata_paint())
-    ob = C.join(parts, 'rock_spire')
-    return ob, dict(collider=dict(type='cylinder', radius=1.0, height=6.0),
+    prof = spire_profile(rng, 6.0, 3)
+    column = dict(lean=(0.9, -0.35), twist=0.5, noise_amp=0.12, base_r=1.08, dip=math.radians(10))
+    state = rng.getstate()
+    bm, kinds = organic_column(prof, 7, rng, tip=(1.02, -0.4, 6.3), **column)
+    # chisel a few long planar facets into the flanks and one across the peak
+    a = rng.uniform(0, TAU)
+    for k in range(3):
+        if k:
+            a += TAU / 3 + rng.uniform(-0.4, 0.4)
+        d = Vector((math.cos(a), math.sin(a), rng.uniform(0.15, 0.4))).normalized()
+        c = Vector((0.0, 0.0, rng.uniform(1.0, 3.5)))
+        ext = max((v.co - c).dot(d) for v in bm.verts)
+        C.chisel(bm, c + d * (ext * rng.uniform(0.84, 0.9)), d)
+    d = Vector((rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5), 1.0)).normalized()
+    top = max(v.co.z for v in bm.verts)
+    C.chisel(bm, Vector((0.9, -0.35, top - 0.35)), d)
+    # strata colors: RockDark only on the undercut (soft waist up to the ledge lip); ledges,
+    # shelves, walls and chisel facets stay Rock
+    dark = {i + 1 for i, kind in enumerate(kinds[:-1]) if kind == 'soft'}
+    ob = C.mesh_object('_spire', bm, 'Rock')
+    band = ob.data.attributes['band']
+    C.paint_faces(ob, lambda p: 'RockDark' if band.data[p.index].value in dark else None)
+    ob.data.attributes.remove(band)
+    ob = C.join([ob], 'rock_spire')
+    return ob, dict(collider=dict(type='cylinder', radius=1.0, height=5.6),
+                    layout=dict(profile=prof, column=column, state=state, tip=(1.02, -0.4)),
                     finalize=dict(weighted=True, ao=dict(distance=0.9, samples=64, floor=0.6, smooth=2)))
 
 
@@ -1082,9 +1212,11 @@ def mesa_chunk(rng):
                               top=False, bottom=False)
     parts.append(C.mesh_object('_talus', bm, 'Rock'))
     strata = [(3.2, 9.8, 1.0, 'Rock'), (9.5, 16.4, 0.9, 'RockDark'), (16.1, 24.6, 0.81, 'Rock')]
+    layers = []
     for k, (z0, z1, s, slot) in enumerate(strata):
         poly = [(x * s * rng.uniform(0.97, 1.03), y * s * rng.uniform(0.97, 1.03)) for x, y in base]
         mid = (z0 + z1) * 0.5
+        layers.append((poly, z0, z1, slot))
         bm, _ = C.extrude_profile(poly, [(z0, 1.0, 0.0), (mid, 0.99, 0.0), (z1 - 0.6, 0.97, 0.0),
                                          (z1, 0.97, 0.6)], bottom=k > 0)
         parts.append(C.mesh_object(f'_stratum{k}', bm, slot))
@@ -1093,7 +1225,33 @@ def mesa_chunk(rng):
         C.paint_faces(p, strata_paint())
     ob = C.join(parts, 'mesa_chunk')
     return ob, dict(collider=dict(type='cylinder', radius=15.0, height=24.6),
+                    layout=dict(base=base, talus=talus, layers=layers),
                     finalize=dict(weighted=True, ao=dict(distance=5.0, samples=48, floor=0.62, smooth=2)))
+
+
+def arch_ring(bm, t, sides, A, B, base_z, off, phase=None):
+    """One cross-section ring of the sandstone arch at path parameter t (0 left foot .. 1
+    right foot): a rounded-rectangle section, massive at the feet and slimmer over the span,
+    displaced by smooth 3D noise. Returns the ring's BMVerts."""
+    phi = math.pi * (1.0 - t)
+    c = Vector((A * math.cos(phi), 0.0, B * math.sin(phi) + base_z))
+    tan = Vector((A * math.sin(phi), 0.0, -B * math.cos(phi))).normalized()
+    nrm = tan.cross(Vector((0, 1, 0))).normalized()  # in the arch plane
+    if nrm.dot(c - Vector((0, 0, base_z))) < 0:
+        nrm = -nrm
+    s = math.sin(math.pi * t)
+    th = 5.0 - 2.3 * s ** 1.3   # radial thickness: massive feet, slimmer span
+    dp = 5.2 - 1.6 * s           # depth along Y
+    ring = []
+    for j in range(sides):
+        a = TAU * j / sides + (math.pi / sides if phase is None else phase)
+        ca, sa = math.cos(a), math.sin(a)
+        k = 1.0 / max(abs(ca), abs(sa)) ** 0.4  # rounded-rectangle section
+        p = c + nrm * (ca * th * 0.5 * k) + Vector((0, 1, 0)) * (sa * dp * 0.5 * k)
+        p += Vector((C.noise3(p, 0.2, off), C.noise3(p, 0.2, (off[1], off[2], off[0])),
+                     0.4 * C.noise3(p, 0.2, (off[2], off[0], off[1])))) * 0.45
+        ring.append(bm.verts.new(p))
+    return ring
 
 
 @asset('sandstone_arch', 'landform', 800,
@@ -1104,29 +1262,8 @@ def sandstone_arch(rng):
     N, sides = 22, 8
     A, B, base_z = 5.2, 12.0, -1.6
     bm = bmesh.new()
-    rings = []
     off = (rng.uniform(0, 50), rng.uniform(0, 50), rng.uniform(0, 50))
-    for i in range(N):
-        t = i / (N - 1)
-        phi = math.pi * (1.0 - t)
-        c = Vector((A * math.cos(phi), 0.0, B * math.sin(phi) + base_z))
-        tan = Vector((A * math.sin(phi), 0.0, -B * math.cos(phi))).normalized()
-        nrm = tan.cross(Vector((0, 1, 0))).normalized()  # in the arch plane
-        if nrm.dot(c - Vector((0, 0, base_z))) < 0:
-            nrm = -nrm
-        s = math.sin(math.pi * t)
-        th = 5.0 - 2.3 * s ** 1.3   # radial thickness: massive feet, slimmer span
-        dp = 5.2 - 1.6 * s           # depth along Y
-        ring = []
-        for j in range(sides):
-            a = TAU * j / sides + math.pi / sides
-            ca, sa = math.cos(a), math.sin(a)
-            k = 1.0 / max(abs(ca), abs(sa)) ** 0.4  # rounded-rectangle section
-            p = c + nrm * (ca * th * 0.5 * k) + Vector((0, 1, 0)) * (sa * dp * 0.5 * k)
-            p += Vector((C.noise3(p, 0.2, off), C.noise3(p, 0.2, (off[1], off[2], off[0])),
-                         0.4 * C.noise3(p, 0.2, (off[2], off[0], off[1])))) * 0.45
-            ring.append(bm.verts.new(p))
-        rings.append(ring)
+    rings = [arch_ring(bm, i / (N - 1), sides, A, B, base_z, off) for i in range(N)]
     for i in range(N - 1):
         for j in range(sides):
             k = (j + 1) % sides
@@ -1139,7 +1276,8 @@ def sandstone_arch(rng):
     arch = C.mesh_object('_arch', bm, 'Rock')
     C.paint_faces(arch, lambda p: 'RockDark' if any(a < p.center.z < b for a, b in bands) else None)
     parts = [arch]
-    for k, (x, y, R) in enumerate(((-7.6, -1.6, 1.0), (7.4, 2.0, 1.15), (-5.0, 3.0, 0.7))):
+    talus = ((-7.6, -1.6, 1.0), (7.4, 2.0, 1.15), (-5.0, 3.0, 0.7))
+    for k, (x, y, R) in enumerate(talus):
         rock = chiseled_rock(f'_talus{k}', (R * 1.2, R, R * 0.8), rng, cuts=4, sink=0.2,
                              bevel=0.0, subdivisions=2, center=(x, y), decimate_to=30)
         parts.append(rock)
@@ -1148,6 +1286,7 @@ def sandstone_arch(rng):
     legs = [dict(type='cylinder', radius=2.6, height=8.0, offset=[-5.0, 0.0, 0.0]),
             dict(type='cylinder', radius=2.6, height=8.0, offset=[5.0, 0.0, 0.0])]
     return ob, dict(collider=None, colliders=legs,
+                    layout=dict(A=A, B=B, base_z=base_z, off=off, bands=bands, talus=talus),
                     finalize=dict(weighted=True, ao=dict(distance=2.5, samples=48, floor=0.55)))
 
 
@@ -1156,10 +1295,11 @@ def sandstone_arch(rng):
 # ----------------------------------------------------------------------------
 
 def crystal(bm, base, direction, length, radius, rng, sides=6, tip=0.26, chamfer=False,
-            apex_shift=0.25, taper=0.9):
+            apex_shift=0.25, taper=0.9, log=None):
     """Faceted crystal: prism body from `base` (embedded, open) with a pyramid tip.
 
     chamfer=True doubles the side count with narrow edge facets that catch light (a bevel).
+    log: a list that receives the resolved parameters (far LODs rebuild the same crystal).
     """
     d = Vector(direction).normalized()
     u, v = C.basis(d)
@@ -1185,6 +1325,9 @@ def crystal(bm, base, direction, length, radius, rng, sides=6, tip=0.26, chamfer
                         + (u * rng.uniform(-1, 1) + v * rng.uniform(-1, 1)) * (radius * apex_shift))
     for j in range(sides):
         bm.faces.new((r1[j], r1[(j + 1) % sides], apex))
+    if log is not None:
+        log.append(dict(base=Vector(base), d=d, u=u, v=v, rot=rot, body=body, radius=radius,
+                        taper=taper, apex=apex.co.copy(), length=length))
     return apex
 
 
@@ -1193,7 +1336,7 @@ def crystal(bm, base, direction, length, radius, rng, sides=6, tip=0.26, chamfer
 def crystal_cluster(rng):
     base = chiseled_rock('_base', (0.82, 0.68, 0.36), rng, cuts=4, sink=0.12, bevel=0.0,
                          decimate_to=60, top_cut=False)
-    bm = bmesh.new()
+    bm, log = bmesh.new(), []
     spec = [  # (azimuth, lean, length, radius, chamfer)
         (0.0, 0.08, 2.35, 0.24, True), (0.9, 0.42, 1.55, 0.19, True), (2.4, 0.5, 1.25, 0.17, True),
         (3.6, 0.36, 1.7, 0.18, False), (4.6, 0.62, 0.9, 0.13, False), (5.5, 0.55, 1.05, 0.14, False),
@@ -1204,11 +1347,14 @@ def crystal_cluster(rng):
         az += a0 + rng.uniform(-0.2, 0.2)
         d = Vector((math.sin(lean) * math.cos(az), math.sin(lean) * math.sin(az), math.cos(lean)))
         foot = Vector((math.cos(az), math.sin(az), 0.0)) * (0.12 + 0.3 * math.sin(lean)) + Vector((0, 0, 0.1))
-        crystal(bm, foot, d, L * rng.uniform(0.92, 1.06), r, rng, sides=12 if ch else 6, chamfer=ch)
+        crystal(bm, foot, d, L * rng.uniform(0.92, 1.06), r, rng, sides=12 if ch else 6, chamfer=ch,
+                log=log)
     xtal = C.mesh_object('_crystals', bm, 'Crystal', smooth=False)
     C.set_shade(xtal, C.gradient(0.0, 1.6, 0.62, 1.0))
+    lod_base = C.duplicate(base, '_base_lod')
     ob = C.join([base, xtal], 'crystal_cluster')
     return ob, dict(collider=dict(type='cylinder', radius=0.8, height=2.4),
+                    layout=dict(base=lod_base, crystals=log, shade=(0.0, 1.6)),
                     finalize=dict(weighted=True, ao=dict(distance=0.6, samples=64, floor=0.5)))
 
 
@@ -1217,23 +1363,26 @@ def crystal_cluster(rng):
 def crystal_spire(rng):
     base = chiseled_rock('_base', (1.7, 1.5, 0.6), rng, cuts=4, sink=0.2, bevel=0.0,
                          decimate_to=40, top_cut=False)
-    bm = bmesh.new()
+    bm, log = bmesh.new(), []
     d = Vector((0.07, -0.04, 1.0)).normalized()
     crystal(bm, Vector((0, 0, -0.2)), d, 10.7, 1.05, rng, sides=12, chamfer=True, tip=0.2,
-            apex_shift=0.2, taper=0.82)
+            apex_shift=0.2, taper=0.82, log=log)
     az = rng.uniform(0, TAU)  # a medium companion crystal leaning off the giant
-    crystal(bm, Vector((math.cos(az), math.sin(az), 0.0)) * 0.75, Vector((math.cos(az) * 0.45, math.sin(az) * 0.45, 1.0)),
-            4.6, 0.48, rng, sides=6, tip=0.24)
+    crystal(bm, Vector((math.cos(az), math.sin(az), 0.0)) * 0.75,
+            Vector((math.cos(az) * 0.45, math.sin(az) * 0.45, 1.0)), 4.6, 0.48, rng, sides=6, tip=0.24,
+            log=log)
     for k in range(4):
         az = k * TAU / 4 + rng.uniform(-0.4, 0.4)
         lean = rng.uniform(0.4, 0.75)
         dd = Vector((math.sin(lean) * math.cos(az), math.sin(lean) * math.sin(az), math.cos(lean)))
         foot = Vector((math.cos(az), math.sin(az), 0.0)) * rng.uniform(1.0, 1.35) + Vector((0, 0, 0.05))
-        crystal(bm, foot, dd, rng.uniform(1.3, 2.4), rng.uniform(0.22, 0.32), rng, sides=6)
+        crystal(bm, foot, dd, rng.uniform(1.3, 2.4), rng.uniform(0.22, 0.32), rng, sides=6, log=log)
     xtal = C.mesh_object('_crystals', bm, 'Crystal', smooth=False)
     C.set_shade(xtal, C.gradient(0.0, 7.0, 0.62, 1.0))
+    lod_base = C.duplicate(base, '_base_lod')
     ob = C.join([base, xtal], 'crystal_spire')
     return ob, dict(collider=dict(type='cylinder', radius=1.2, height=10.5),
+                    layout=dict(base=lod_base, crystals=log, shade=(0.0, 7.0)),
                     finalize=dict(weighted=True, ao=dict(distance=1.2, samples=64, floor=0.5)))
 
 
@@ -1290,10 +1439,513 @@ def shard(rng):
 
 
 # ----------------------------------------------------------------------------
+# Far LODs
+# ----------------------------------------------------------------------------
+#
+# Hand-built distant versions of the big assets, exported next to them in flora.glb as
+# '<name>_far'. Each far builder reuses the layout its near builder recorded (extras
+# 'layout': mass centers, spines, outlines, RNG states, ...), so the silhouette lines up, and
+# it uses the same material slots and the same shading recipe (normals, gradients, baked AO),
+# so the average color matches. Budget: at most a quarter of the near model's triangles.
+
+FAR = {}
+
+
+def far(name):
+    """Register the far-LOD builder of asset `name`: fn(layout, budget, near) -> (obj, extras)
+    where obj is named f'{name}_far' and extras may hold 'finalize' options."""
+    def deco(fn):
+        FAR[name] = fn
+        return fn
+    return deco
+
+
+def slot_bounds(ob, slots):
+    """(min corner, max corner) of the vertices used by faces of the given slots."""
+    me = ob.data
+    idx = {i for i, m in enumerate(me.materials) if m is not None and m.name in slots}
+    vs = {v for p in me.polygons if p.material_index in idx for v in p.vertices}
+    cos = [me.vertices[i].co for i in vs]
+    lo = Vector((min(c.x for c in cos), min(c.y for c in cos), min(c.z for c in cos)))
+    hi = Vector((max(c.x for c in cos), max(c.y for c in cos), max(c.z for c in cos)))
+    return lo, hi
+
+
+def fit_bounds(ob, lo, hi, axes=(0, 1, 2)):
+    """Scale/offset ob along the given axes so its bounding box becomes (lo, hi) there."""
+    me = ob.data
+    a = Vector((min(v.co.x for v in me.vertices), min(v.co.y for v in me.vertices),
+                min(v.co.z for v in me.vertices)))
+    b = Vector((max(v.co.x for v in me.vertices), max(v.co.y for v in me.vertices),
+                max(v.co.z for v in me.vertices)))
+    for v in me.vertices:
+        v.co = Vector(tuple(lo[k] + (v.co[k] - a[k]) * (hi[k] - lo[k]) / max(1e-6, b[k] - a[k])
+                            if k in axes else v.co[k] for k in range(3)))
+    me.update()
+
+
+@far('bush_round')
+def bush_round_far(L, budget, near):
+    # the near recipe at a quarter of the triangles: the same masses (same seed, so the same
+    # lobes), each a low-poly closed blob, LeafAlt still its own highlight lobe
+    objs = fit_masses(L['masses'], budget, L['seed'], min_tris=8)
+    soften_masses(objs, L['masses'], L['center'], top=L['top'])
+    ob = C.join(objs, 'bush_round_far')
+    fit_bounds(ob, *slot_bounds(near, ('Leaf', 'LeafAlt')))  # decimation shrinks; keep the size
+    return ob, dict(finalize=dict(ao=dict(distance=0.5, samples=64, floor=0.5, smooth=1)))
+
+
+@far('tree_round')
+def tree_round_far(L, budget, near):
+    t = L['trunk']
+    bm, _ = C.tube([t[0], t[1], t[3], t[4] + Vector((0.0, 0.0, 0.9))], [0.74, 0.46, 0.37, 0.33],
+                   sides=5, cap_start=False, cap_end=False)
+    wood = [C.mesh_object('_trunk', bm, 'Bark')]
+    for a, b, c, r, _ in L['limbs'][:2]:  # the two big limbs of the fork; the third hides
+        bm, _ = C.tube([a, b.lerp(c, 0.5)], [r * 1.1, r * 0.8], sides=3, cap_start=False,
+                       cap_end=False)
+        wood.append(C.mesh_object('_limb', bm, 'Bark'))
+    probe = fit_masses(L['masses'], 10 ** 6, L['seed'], min_tris=8)  # wood hidden in the canopy
+    C.remove_hidden_faces(wood, occluders=probe)
+    for o in probe:
+        C.delete(o)
+    objs = fit_masses(L['masses'], budget, L['seed'], wood=wood, min_tris=8)
+    soften_masses(objs, L['masses'], L['center'], top=L['top'])
+    canopy = C.join(objs, '_canopy')
+    fit_bounds(canopy, *slot_bounds(near, ('Leaf', 'LeafAlt')))
+    for w in wood:
+        C.set_shade(w, C.gradient(0.0, 4.0, 0.85, 1.0))
+        C.set_ao_weight(w, 0.6)
+    ob = C.join(wood + [canopy], 'tree_round_far')
+    return ob, dict(finalize=dict(ao=dict(distance=1.8, samples=64, floor=0.55, smooth=1)))
+
+
+@far('rock_boulder')
+def rock_boulder_far(L, budget, near):
+    # one closed single-slot rock: a collapse-decimated copy of the finished near model keeps
+    # its silhouette best (rebuilding from a coarser blob moves the chisel facets around)
+    ob = C.duplicate(near, 'rock_boulder_far')
+    C.decimate(ob, target_tris=budget)
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=0.7, samples=64, floor=0.45)))
+
+
+def simplify_poly(poly, n):
+    """Drop the least significant vertices (Visvalingam) down to n."""
+    pts = list(poly)
+    while len(pts) > n:
+        def tri(i):
+            a, b, c = pts[i - 1], pts[i], pts[(i + 1) % len(pts)]
+            return abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]))
+        pts.pop(min(range(len(pts)), key=tri))
+    return pts
+
+
+def inside_poly(p, poly):
+    """Point-in-polygon (even-odd)."""
+    x, y, inside = p[0], p[1], False
+    for i in range(len(poly)):
+        (x0, y0), (x1, y1) = poly[i - 1], poly[i]
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            inside = not inside
+    return inside
+
+
+@far('rock_slab')
+def rock_slab_far(L, budget, near):
+    # the same tilted plates as plain prisms with simplified outlines; each upper plate stands
+    # on the plate below (no hidden bottom faces) and is kept inside its outline. When the
+    # budget only allows two plates, the second one rises to the mean height of the top two.
+    plates = L['plates']
+    for counts in ((5, 4, 3), (5, 4, 0), (4, 4, 0)):
+        parts, below, floor = [], None, None
+        for k, ((poly, z0, z1, slot), n) in enumerate(zip(plates, counts)):
+            if not n:
+                continue
+            if k == 1 and not counts[2]:
+                z1 = (z1 + plates[2][2]) * 0.5
+            pts = simplify_poly(poly, n)
+            if below is not None:
+                cx, cy = sum(p[0] for p in pts) / n, sum(p[1] for p in pts) / n
+                while not all(inside_poly(p, below) for p in pts):
+                    pts = [(cx + (x - cx) * 0.95, cy + (y - cy) * 0.95) for x, y in pts]
+            bm, _ = C.extrude_profile(pts, [(z0 if floor is None else floor, 1.0, 0.0), (z1, 1.0, 0.0)],
+                                      bottom=False)
+            parts.append(C.mesh_object(f'_plate{k}', bm, slot))
+            below, floor = pts, z1
+        for p in parts:
+            C.transform(p, L['xform'])
+            C.paint_faces(p, strata_paint())
+        ob = C.join(parts, 'rock_slab_far')
+        if C.tri_count(ob) <= budget:
+            fit_bounds(ob, *slot_bounds(near, ('Rock', 'RockDark')), axes=(0, 1))
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=0.8, samples=64, floor=0.6)))
+
+
+@far('rock_spire')
+def rock_spire_far(L, budget, near):
+    # the same column (same RNG state: same spine, noise, ledge sides and strata dip) with 4
+    # sides and only the rings that carry the silhouette and the strata colors: soft waist
+    # and ledge lip per stratum (RockDark between them) plus the last shelf
+    import random
+    prof = L['profile']
+    shelf = [e for e in prof if e[2] == 'shelf'][-1:]
+    keep = [e for e in prof if e[2] in ('foot', 'soft', 'lip')]
+    top = max(v.co.z for v in near.data.vertices)
+    for rings in (keep + shelf, keep):
+        rng = random.Random()
+        rng.setstate(L['state'])
+        bm, kinds = organic_column(rings, 4, rng, tip=(*L['tip'], top), cap_bottom=False,
+                                   height=prof[-1][0], **L['column'])
+        dark = {i + 1 for i, kind in enumerate(kinds[:-1]) if kind == 'soft'}
+        ob = C.mesh_object('_spire', bm, 'Rock')
+        band = ob.data.attributes['band']
+        C.paint_faces(ob, lambda p: 'RockDark' if band.data[p.index].value in dark else None)
+        ob.data.attributes.remove(band)
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    ob = C.join([ob], 'rock_spire_far')
+    return ob, dict(finalize=dict(ao=dict(distance=0.9, samples=64, floor=0.6, smooth=2)))
+
+
+@far('tree_pine')
+def tree_pine_far(L, budget, near):
+    # the same six tiers as single star cones (scallop tips only, drooping like the near ones);
+    # the lowest tiers keep their notches when the budget allows
+    lean = L['lean']
+    for notched in (2, 1, 0):
+        bm, _ = C.tube([Vector((0, 0, -0.2)), Vector((0, 0, 2.4)) + lean * 0.2], [0.46, 0.27],
+                       sides=4, cap_start=False, cap_end=False)
+        trunk = C.mesh_object('_trunk', bm, 'Bark')
+        tiers = []
+        for k, (zb, zt, R, n, phase, c) in enumerate(L['tiers']):
+            h, full = zt - zb, k < notched
+            bm, rings = C.lathe([(0.0, zb + h * 0.3), (R, zb), (0.0, zt)], sides=n * 2 if full else n,
+                                phase=phase, center=c,
+                                radial=lambda i, j, a, full=full: 0.88 if full and j % 2 else 1.07)
+            for j, v in enumerate(rings[0]):
+                v.co.z += 0.05 * h if full and j % 2 else -0.24 * h
+            tier = C.mesh_object(f'_tier{k}', bm, 'Leaf')
+            C.set_normals(tier, tier_normals(c, zb + h * 0.22))
+            tiers.append(tier)
+        C.remove_hidden_faces(tiers + [trunk])
+        ob = C.join([trunk] + tiers, 'tree_pine_far')
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(ao=dict(distance=1.5, samples=64, floor=0.5)))
+
+
+def spike(bm, loc, nrm, size, sides=3):
+    """Small pyramid (no base) standing on a surface, for glow spots and studs."""
+    u, v = C.basis(nrm)
+    ring = [bm.verts.new(loc + (u * math.cos(TAU * m / sides) + v * math.sin(TAU * m / sides)) * size - nrm * 0.01)
+            for m in range(sides)]
+    apex = bm.verts.new(loc + nrm * (size * 0.55))
+    for m in range(sides):
+        f = bm.faces.new((ring[m], ring[(m + 1) % sides], apex))
+        f.normal_update()
+        if f.normal.dot(nrm) < 0:
+            f.normal_flip()
+
+
+@far('tree_umbrella')
+def tree_umbrella_far(L, budget, near):
+    # stem (5 sides), a 10-sided cap with the same wobbling rim, half the glow spots (bigger,
+    # same total glow area); the small skirt ring is dropped (LeafAlt stays on the cap)
+    from mathutils.bvhtree import BVHTree
+    P, top, R, wob = L['P'], L['top'], L['R'], L['wob']
+    near_r = L['radii']
+
+    def stem_r(t):
+        x = t * (len(near_r) - 1)
+        i = min(int(x), len(near_r) - 2)
+        return C.lerp(near_r[i], near_r[i + 1], x - i)
+
+    def wobble(a):
+        return 0.3 * math.cos(3 * a + wob[0]) + 0.14 * math.cos(5 * a + wob[1])
+    for spans, sides, every in ((3, 10, 2), (2, 10, 2), (2, 8, 2), (2, 8, 3)):
+        ts = [i / spans for i in range(spans + 1)]
+        bm, _ = C.tube([C.bezier(*P, t) for t in ts], [stem_r(t) * (1.15 if t == 0 else 1.0) for t in ts],
+                       sides=5, cap_start=False, cap_end=False)
+        stem = C.mesh_object('_stem', bm, 'Bark')
+        C.set_shade(stem, C.gradient(0.0, 6.0, 0.88, 1.0))
+        prof = [(0.0, 0.05), (R * 0.62, -0.18), (R * 0.97, -0.38), (R * 0.88, 0.36), (R * 0.4, 1.1),
+                (0.0, 1.4)]
+        bm, rings = C.lathe(prof, sides=sides, center=top)
+        for i, ring in enumerate(rings):
+            rf = prof[i + 1][0] / R
+            for j, v in enumerate(ring):
+                v.co.z += wobble(TAU * j / sides) * min(1.0, rf * 1.4)
+        cap = C.mesh_object('_cap', bm, 'LeafAlt')
+        fit_bounds(cap, *slot_bounds(near, ('LeafAlt',)), axes=(0, 1))
+        shade_cap(cap, top, R)
+        me = cap.data
+        tree = BVHTree.FromPolygons([v.co for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+        picked = L['spots'][::every]
+        grow = math.sqrt(len(L['spots']) * 3.08 / (len(picked) * 1.93))  # same total glow area
+        bm = new_bm()
+        for loc, nrm, s in picked:
+            hit = tree.ray_cast(Vector((loc.x, loc.y, loc.z - 2.0)), UP, 4.0)
+            if hit[0] is not None:
+                spike(bm, hit[0], -hit[1] if hit[1].z > 0 else hit[1], s * grow)
+        glow = C.mesh_object('_spots', bm, 'Glow')
+        C.set_normals(glow, lambda co, n: n)
+        ob = C.join([stem, cap, glow], 'tree_umbrella_far')
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(ao=dict(distance=1.4, samples=64, floor=0.45)))
+
+
+def frond_ribbon(bm, f, segs=3, fill=0.7, fold=0.55):
+    """Far-LOD frond: the comb frond's envelope as a folded (V) ribbon along the same spine.
+    Leaflets cover only part of the envelope, hence `fill` < 1. 4 * segs - 4 triangles."""
+    _, left = yaw_dirs(f['yaw'])
+    ctrl = frond_spine(f['base'], f['yaw'], f['length'], f['rise'], f['droop'])
+    rows = []
+    for i in range(segs + 1):
+        t = i / segs
+        p = C.bezier(*ctrl, t)
+        if i in (0, segs):
+            rows.append((bm.verts.new(p),) * 3)
+            continue
+        w = frond_width(f['width'], t) * fill
+        rows.append((bm.verts.new(p + left * w - UP * (w * fold)), bm.verts.new(p),
+                     bm.verts.new(p - left * w - UP * (w * fold))))
+    facing = (yaw_dirs(f['yaw'])[0] * 0.6 + UP).normalized()
+    for (l0, c0, r0), (l1, c1, r1) in zip(rows, rows[1:]):
+        for quad in ((c0, c1, l1, l0), (c0, r0, r1, c1)):
+            vs = []
+            for v in quad:
+                if v not in vs:
+                    vs.append(v)
+            if len(vs) >= 3:
+                face = bm.faces.new(vs)
+                face.normal_update()
+                if face.normal.dot(facing) < 0.0:
+                    face.normal_flip()
+
+
+@far('tree_palm')
+def tree_palm_far(L, budget, near):
+    # trunk on the same curve, 9 folded ribbon fronds on the same spines; with budget to
+    # spare an octahedral crown knob (coconuts dropped: Bark stays on the trunk)
+    P = L['trunk']
+    for sides, segs, knob in ((5, 4, True), (4, 4, True), (4, 4, False), (4, 3, True)):
+        ts = (0.0, 0.33, 0.67, 1.0)
+        bm, _ = C.tube([C.bezier(*P, t) for t in ts], [0.5, 0.36, 0.29, 0.22], sides=sides,
+                       cap_start=False, cap_end=False)
+        trunk = C.mesh_object('_trunk', bm, 'Bark')
+        C.set_shade(trunk, C.gradient(0.0, 6.0, 0.9, 1.0))
+        parts = [trunk]
+        cc = L['crown']
+        if knob:
+            bm = bmesh.new()
+            C.convex_hull([cc + Vector(d) for d in ((0.36, 0, 0), (-0.36, 0, 0), (0, 0.36, 0),
+                                                    (0, -0.36, 0), (0, 0, 0.42), (0, 0, -0.42))], bm=bm)
+            crown = C.mesh_object('_crown', bm, 'Bark')
+            C.set_normals(crown, C.radial_normals(cc, 1.0))
+            parts.append(crown)
+        bm = new_bm()
+        for f in L['fronds']:
+            frond_ribbon(bm, f, segs, fill=0.55)
+        fronds = C.mesh_object('_fronds', bm, 'Leaf')
+        fit_bounds(fronds, *slot_bounds(near, ('Leaf',)), axes=(0, 1))
+        C.set_normals(fronds, dome_normals(cc - Vector((0, 0, 1.2)), 0.35))
+        ob = C.join(parts + [fronds], 'tree_palm_far')
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(ao=dict(distance=1.2, samples=48, floor=0.5)))
+
+
+@far('cactus_alien')
+def cactus_alien_far(L, budget, near):
+    # smooth low-sided columns on the same paths (ribs average out at distance), Glow crowns
+    # on the tip fans; the tiny areole studs are dropped (Glow stays on the crowns)
+    (mp, mr), *arms = L['columns']
+    for main_keep, arm_sides in (((0, 2, 4, 5), (4, 4)), ((0, 2, 4, 5), (4, 3)), ((0, 2, 5), (4, 3)),
+                                 ((0, 2, 5), (3, 3))):
+        parts = []
+        cols = [([mp[i] for i in main_keep], [mr[i] for i in main_keep], 5)]
+        cols += [([ap[0], ap[2], ap[3]], [ar[0], ar[2], ar[3]], s) for (ap, ar), s in zip(arms, arm_sides)]
+        for k, (pts, radii, sides) in enumerate(cols):
+            top = pts[-1] + (pts[-1] - pts[-2]).normalized() * (radii[-1] * 0.55)
+            bm, _ = C.tube(pts, [r * 1.05 for r in radii], sides=sides, cap_start=False, end_tip=top)
+            col = C.mesh_object(f'_col{k}', bm, 'Leaf')
+            C.paint_faces(col, lambda p, top=top, r=radii[-1]: 'Glow' if (p.center - top).length < r * 0.85 else None)
+            C.set_shade(col, C.gradient(0.0, L['H'] * 0.4, 0.75, 1.0))
+            parts.append(col)
+        C.remove_hidden_faces(parts)
+        ob = C.join(parts, 'cactus_alien_far')
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(ao=dict(distance=0.45, samples=48, floor=0.5)))
+
+
+def keep_indices(poly, n):
+    """Indices of the n most significant outline vertices (Visvalingam), in order."""
+    idx = list(range(len(poly)))
+    while len(idx) > n:
+        def tri(k):
+            a, b, c = poly[idx[k - 1]], poly[idx[k]], poly[idx[(k + 1) % len(idx)]]
+            return abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]))
+        idx.pop(min(range(len(idx)), key=tri))
+    return idx
+
+
+@far('mesa_chunk')
+def mesa_chunk_far(L, budget, near):
+    # the same talus and strata with the outline thinned to its most significant vertices
+    # (shared by every layer) and no chamfers
+    for n in range(18, 8, -1):
+        idx = keep_indices(L['base'], n)
+        bm, _ = C.extrude_profile([L['talus'][i] for i in idx], [(-0.6, 1.0, 0.0), (3.8, 0.85, 0.0)],
+                                  top=False, bottom=False)
+        parts = [C.mesh_object('_talus', bm, 'Rock')]
+        for k, (poly, z0, z1, slot) in enumerate(L['layers']):
+            bm, _ = C.extrude_profile([poly[i] for i in idx], [(z0, 1.0, 0.0), (z1, 0.97, 0.0)],
+                                      bottom=k > 0)
+            parts.append(C.mesh_object(f'_stratum{k}', bm, slot))
+        C.remove_hidden_faces(parts)
+        for p in parts:
+            C.paint_faces(p, strata_paint())
+        ob = C.join(parts, 'mesa_chunk_far')
+        if C.tri_count(ob) <= budget:
+            fit_bounds(ob, *slot_bounds(near, ('Rock', 'RockDark')), axes=(0, 1))
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=5.0, samples=48, floor=0.8, smooth=1)))
+
+
+@far('sandstone_arch')
+def sandstone_arch_far(L, budget, near):
+    # the same noisy sweep with 6-sided sections; on the legs the rings sit on the strata
+    # boundaries so the thin RockDark bands stay crisp without extra cuts; low-poly talus
+    import random
+    A, B, base_z, off, bands = L['A'], L['B'], L['base_z'], L['off'], L['bands']
+
+    def t_at(z):  # left-leg path parameter where the arch center line reaches height z
+        return math.asin(C.clamp((z - base_z) / B, 0.0, 1.0)) / math.pi
+    leg = [t_at(z) for lo, hi in bands[:2] for z in (lo, hi)]
+    for top_ts, rock_tris in (((0.34, 0.45, 0.55, 0.66), 10), ((0.34, 0.45, 0.55, 0.66), 8),
+                              ((0.36, 0.5, 0.64), 8)):
+        ts = [0.0] + leg + list(top_ts) + [1.0 - t for t in reversed(leg)] + [1.0]
+        dark_rings = {1, 3, len(ts) - 3, len(ts) - 5}  # ring i -> band between rings i, i + 1
+        bm = bmesh.new()
+        band = bm.faces.layers.int.new('band')
+        rings = [arch_ring(bm, t, 6, A, B, base_z, off, phase=0.0) for t in ts]
+        for i in range(len(rings) - 1):
+            for j in range(6):
+                k = (j + 1) % 6
+                f = bm.faces.new((rings[i][j], rings[i][k], rings[i + 1][k], rings[i + 1][j]))
+                f[band] = int(i in dark_rings)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        arch = C.mesh_object('_arch', bm, 'Rock')
+        flag = arch.data.attributes['band']
+        hi_lo, hi_hi = bands[2]
+        C.paint_faces(arch, lambda p: 'RockDark' if flag.data[p.index].value or hi_lo < p.center.z < hi_hi else None)
+        arch.data.attributes.remove(flag)
+        parts = [arch]
+        rng = random.Random(7)
+        for k, (x, y, R) in enumerate(L['talus']):
+            bm = C.blob((x, y, R * 0.8 - 0.2), (R * 1.2, R, R * 0.8), subdivisions=1, lump=0.1,
+                        seed=rng.uniform(0, 50))
+            rock = C.mesh_object(f'_talus{k}', bm, 'Rock')
+            C.decimate(rock, target_tris=rock_tris)
+            parts.append(rock)
+        C.remove_hidden_faces(parts)
+        ob = C.join(parts, 'sandstone_arch_far')
+        if C.tri_count(ob) <= budget:
+            break
+        C.delete(ob)
+    else:
+        raise RuntimeError(f'far LOD does not fit {budget} triangles')
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=2.5, samples=48, floor=0.55)))
+
+
+CRYSTAL_COST = (18, 12, 9, 3)  # 6-sided prism, 4-sided prism, 3-sided prism, 3-sided spike
+
+
+def crystal_lod(bm, c, level):
+    """A logged crystal() rebuilt with fewer sides (level indexes CRYSTAL_COST)."""
+    sides = (6, 4, 3, 3)[level]
+    d, u, v, rot = c['d'], c['u'], c['v'], c['rot']
+
+    def ring(at, r):
+        return [bm.verts.new(at + (u * math.cos(rot + TAU * j / sides) + v * math.sin(rot + TAU * j / sides)) * r)
+                for j in range(sides)]
+    r0 = ring(c['base'], c['radius'] * c['taper'])
+    apex = bm.verts.new(c['apex'])
+    if level < 3:
+        r1 = ring(c['base'] + d * c['body'], c['radius'])
+        for j in range(sides):
+            k = (j + 1) % sides
+            bm.faces.new((r0[j], r0[k], r1[k], r1[j]))
+    else:
+        r1 = r0
+    for j in range(sides):
+        bm.faces.new((r1[j], r1[(j + 1) % sides], apex))
+
+
+def crystals_far(name, L, budget, base_tris):
+    """Far LOD for crystal formations: the near rock base collapse-decimated, the logged
+    crystals rebuilt with fewer sides, the smallest ones simplified first until it fits."""
+    log = L['crystals']
+    small_first = sorted(range(len(log)), key=lambda i: log[i]['length'] * log[i]['radius'])
+    base = L['base']
+    C.decimate(base, target_tris=base_tris)
+    levels = [0 if log[i]['radius'] > 0.6 else 1 for i in range(len(log))]
+    while sum(CRYSTAL_COST[lv] for lv in levels) + C.tri_count(base) > budget:
+        i = next((i for i in small_first if levels[i] < 3), None)
+        if i is None:
+            raise RuntimeError(f'{name}: crystals do not fit {budget}')
+        # degrade round-robin from the smallest, never two steps ahead of a bigger crystal
+        lagging = [j for j in small_first if levels[j] < levels[i]]
+        i = lagging[0] if lagging else i
+        levels[i] += 1
+    bm = bmesh.new()
+    for c, level in zip(log, levels):
+        crystal_lod(bm, c, level)
+    xtal = C.mesh_object('_crystals', bm, 'Crystal', smooth=False)
+    C.set_shade(xtal, C.gradient(L['shade'][0], L['shade'][1], 0.62, 1.0))
+    C.remove_hidden_faces([base, xtal])
+    return C.join([base, xtal], name)
+
+
+@far('crystal_cluster')
+def crystal_cluster_far(L, budget, near):
+    ob = crystals_far('crystal_cluster_far', L, budget, 12)
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=0.6, samples=64, floor=0.5)))
+
+
+@far('crystal_spire')
+def crystal_spire_far(L, budget, near):
+    ob = crystals_far('crystal_spire_far', L, budget, 10)
+    return ob, dict(finalize=dict(weighted=True, ao=dict(distance=1.2, samples=64, floor=0.6)))
+
+
+# ----------------------------------------------------------------------------
 # Build + export
 # ----------------------------------------------------------------------------
 
-def build(names=None):
+def build(names=None, far_lods=True):
     C.reset_scene()
     for slot in ('Grass', 'Leaf', 'LeafAlt', 'Bark', 'Rock', 'RockDark', 'Petal', 'Crystal',
                  'Glow', 'Sand'):
@@ -1309,15 +1961,25 @@ def build(names=None):
         ob, extra = spec['fn'](rng)
         assert ob.name == spec['name'], (ob.name, spec['name'])
         info = C.finalize(ob, budget=spec['budget'], **extra.get('finalize', {}))
-        built.append((spec, ob, info, extra))
-        print(f"  {spec['name']:<18} {info['triangles']:>4}/{spec['budget']:<4} tris  "
-              f"h {info['height']:.2f}  r {info['radius']:.2f}  {info['materials']}")
+        line = (f"  {spec['name']:<18} {info['triangles']:>4}/{spec['budget']:<4} tris  "
+                f"h {info['height']:.2f}  r {info['radius']:.2f}  {info['materials']}")
+        far_ob = far_info = None
+        if spec['name'] in FAR and far_lods:
+            budget = info['triangles'] // 4
+            far_ob, fx = FAR[spec['name']](extra.get('layout', {}), budget, ob)
+            assert far_ob.name == spec['name'] + '_far', far_ob.name
+            far_info = C.finalize(far_ob, budget=budget, **fx.get('finalize', {}))
+            if set(far_info['materials']) != set(info['materials']):
+                raise RuntimeError(f"{far_ob.name}: slots {far_info['materials']} != {info['materials']}")
+            line += f"   far {far_info['triangles']:>3}/{budget:<3} h {far_info['height']:.2f}"
+        built.append((spec, ob, info, extra, far_ob, far_info))
+        print(line)
     return built
 
 
 def manifest(built):
     out = []
-    for spec, ob, info, extra in built:
+    for spec, ob, info, extra, far_ob, far_info in built:
         centered = extra.get('centered', False)
         entry = {
             'name': spec['name'],
@@ -1327,6 +1989,8 @@ def manifest(built):
             'radius': round(extra.get('radius', info['radius']), 3),
             'collider': extra.get('collider'),
             'materials': info['materials'],
+            'far': far_ob.name if far_ob else None,
+            'farTriangles': far_info['triangles'] if far_info else None,
             'notes': spec['notes'],
         }
         for k in ('colliders',):
@@ -1342,11 +2006,12 @@ def main(argv=None):
     ap.add_argument('--out', default=os.path.join(C.MODELS_DIR, 'flora.raw.glb'))
     ap.add_argument('--no-manifest', action='store_true')
     ap.add_argument('--no-pack', action='store_true')
-    ap.add_argument('--pack-args', default='-cc -kn -km -vpf')
+    ap.add_argument('--no-far', action='store_true', help='skip the <name>_far LOD nodes')
+    ap.add_argument('--pack-args', default='-cc -kn -km -vpf -kv')
     args = ap.parse_args(argv)
     names = set(args.only.split(',')) if args.only else None
-    built = build(names)
-    objs = [ob for _, ob, _, _ in built]
+    built = build(names, far_lods=not args.no_far)
+    objs = [o for b in built for o in (b[1], b[4]) if o is not None]
     C.export_glb(args.out, objs)
     packed = args.out.replace('.raw.glb', '.glb') if args.out.endswith('.raw.glb') \
         else args.out[:-4] + '.packed.glb'
@@ -1355,8 +2020,9 @@ def main(argv=None):
     if not args.no_manifest:
         path = os.path.join(os.path.dirname(packed), 'flora.json')
         C.write_json(path, manifest(built))
-    total = sum(i['triangles'] for _, _, i, _ in built)
-    print(f'built {len(built)} assets, {total} triangles -> {args.out}'
+    total = sum(b[2]['triangles'] for b in built)
+    far_total = sum(b[5]['triangles'] for b in built if b[5])
+    print(f'built {len(built)} assets, {total} triangles (+{far_total} in far LODs) -> {args.out}'
           + ('' if args.no_pack else f' + {packed}'))
 
 
