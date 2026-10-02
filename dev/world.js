@@ -50,6 +50,7 @@ if (q.has('orbit')) {
   const pitchAxis = new THREE.Vector3().crossVectors(look, up).normalize();
   look.applyAxisAngle(pitchAxis, pitch);
   camera.up.copy(up); camera.lookAt(camera.position.clone().add(look));
+  if (q.get('look')) { const target = universe.planets.find(p => p.spec.id === q.get('look')); if (target) camera.lookAt(target.center); }
 }
 
 // Free-fly controls for interactive use.

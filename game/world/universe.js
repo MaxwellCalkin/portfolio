@@ -39,6 +39,13 @@ export class Universe {
       return { spec, shape, terrain, atmo, shell, clouds, material, fog, center: new THREE.Vector3(...spec.position) };
     });
 
+    // Each sky knows where the other worlds are (relative to its own center).
+    for (const p of this.planets) {
+      const others = this.planets.filter(o => o !== p), u = p.shell.material.uniforms;
+      others.slice(0, 6).forEach((o, i) => u.uOthers.value[i].set(o.center.x - p.center.x, o.center.y - p.center.y, o.center.z - p.center.z, o.spec.radius * 1.17));
+      u.uOtherCount.value = Math.min(6, others.length);
+    }
+
     // Lighting: a directional sun whose shadow frustum follows the focus point,
     // and a hemisphere light re-aimed at the local "up" every frame.
     this.sunLight = new THREE.DirectionalLight(new THREE.Color(...SUN_COLOR), 3.2);
@@ -104,6 +111,10 @@ export class Universe {
     // Stars fade in daylight inside an atmosphere.
     const starFade = 1 - this.local.day * this.local.inAtmosphere * 0.97;
     this.stars.material.uniforms.uFade.value = starFade;
+    this.nebula.material.uniforms.uFade.value = 1 - this.local.day * this.local.inAtmosphere;
+    // Clouds of the world you are on draw over its sky; other worlds' clouds
+    // draw before the skies, so they sit behind your atmosphere like their ground.
+    for (const p of this.planets) if (p.clouds) p.clouds.renderOrder = p === planet && altitude < p.spec.radius * 0.6 ? 3 : 1;
     this.sun.position.copy(camera.position).addScaledVector(this.sunDir, 300000);
     this.nebula.position.copy(camera.position); this.stars.position.copy(camera.position);
     return this.local;

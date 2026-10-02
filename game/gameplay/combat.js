@@ -15,6 +15,7 @@ export const ABILITIES = Object.freeze({
   drop: { name: 'The Drop', key: 'X', radius: 46, damage: 520, windup: 0.9 },
 });
 
+const BOSS_SCALE = 1.8;
 const ENEMY = { speed: 4.2, range: 16, aggro: 55, boltSpeed: 36, boltDamage: 9, hp: 110, contact: 16 };
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
 
@@ -67,6 +68,11 @@ export class Combat {
   #spawn(planet, position, { boss = false } = {}) {
     const type = Math.floor(Math.random() * 3);
     const mesh = boss ? createBoss(planet.spec.id) : createCreature(type);
+    if (boss) { // wardens loom: scale the model and its gameplay metrics together
+      mesh.scale.multiplyScalar(BOSS_SCALE);
+      mesh.userData.radius = (mesh.userData.radius || 2) * BOSS_SCALE;
+      mesh.userData.groundOffset = (mesh.userData.groundOffset || 3) * BOSS_SCALE;
+    }
     const up = position.clone().sub(planet.center).normalize();
     const e = {
       mesh, boss, planet, up, position: position.clone(), center: position.clone(), heading: new THREE.Vector3(-up.z, 0, up.x).normalize(),

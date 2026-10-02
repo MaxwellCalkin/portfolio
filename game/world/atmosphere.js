@@ -99,6 +99,8 @@ const shellFragment = /* glsl */`
 varying vec3 vLocal;
 ${SCATTER_GLSL}
 uniform float uSunDisc;
+uniform vec4 uOthers[6];
+uniform int uOtherCount;
 #include <logdepthbuf_pars_fragment>
 void main() {
   #include <logdepthbuf_fragment>
@@ -115,8 +117,15 @@ void main() {
   // Stylization: a touch more saturation than physics would give.
   float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
   color = max(mix(vec3(luma), color, 1.3), 0.0);
-  // Bright daylight hides the stars and nebula behind it (contrast, not just extinction).
-  float alpha = dot(T, vec3(0.3333)) * exp(-luma * 9.0);
+  // What lies behind (space, other worlds) shows through by transmittance; a
+  // bright sky also softens it a little. Stars and nebula fade separately.
+  float alpha = dot(T, vec3(0.3333)) * (1.0 - 0.4 * smoothstep(0.2, 0.9, luma));
+  // Other worlds hang in this sky like big moons: keep them vivid.
+  for (int i = 0; i < 6; i++) {
+    if (i >= uOtherCount) break;
+    vec2 o = raySphere(uCamPlanet - uOthers[i].xyz, rd, uOthers[i].w);
+    if (o.x > 0.0 && o.x < 1e19) { color *= 0.3; alpha = mix(alpha, 1.0, 0.85); break; }
+  }
   gl_FragColor = vec4(color, alpha);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -145,7 +154,7 @@ export function createAtmosphereUniforms(spec, quality = 'high') {
 export function createAtmosphereShell(spec, uniforms) {
   const p = atmosphereParams(spec);
   const material = new THREE.ShaderMaterial({
-    uniforms: { ...uniforms, uSunDisc: { value: 1 } },
+    uniforms: { ...uniforms, uSunDisc: { value: 1 }, uOthers: { value: Array.from({ length: 6 }, () => new THREE.Vector4()) }, uOtherCount: { value: 0 } },
     vertexShader: shellVertex,
     fragmentShader: shellFragment,
     side: THREE.BackSide,

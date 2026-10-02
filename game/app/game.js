@@ -60,6 +60,27 @@ export class Game {
       state: () => ({ mode: this.mode, world: this.worldId, ship: this.ship.state, pos: this.player.position.toArray().map(v => +v.toFixed(1)), alt: +this.universe.local.altitude.toFixed(1), time: +this.time.toFixed(2), card: this.card?.id ?? null, found: this.journal.progress().found, score: this.run.score }),
       interact: () => this.#interact(),
       board: () => this.#board(),
+      aimNearest: () => {
+        const p = this.player; let best = null, bestD = Infinity;
+        for (const e of this.combat.enemies) { const d = e.center.distanceTo(p.position); if (d < bestD) { bestD = d; best = e; } }
+        if (!best) return null;
+        const to = best.center.clone().sub(p.position); const flat = to.clone().addScaledVector(p.up, -to.dot(p.up));
+        const fl = flat.length(); this.rig.lookAlong(p.up, flat.normalize(), Math.atan2(to.dot(p.up) - 1.6, fl));
+        return { name: best.name || best.mesh.userData.displayName, distance: +bestD.toFixed(1), hp: best.hp };
+      },
+      toShard: () => {
+        const s = this.shards.nearest(this.player.position); if (!s) return null;
+        const at = s.item.position.clone().addScaledVector(s.item.up, -1.6).add(new THREE.Vector3(3, 0, 0));
+        this.player.place(this.planet, at, this.player.heading); this.#snapFootCamera();
+        return { id: s.item.id, distance: +s.distance.toFixed(1) };
+      },
+      toLair: () => {
+        const lair = this.lairs.get(this.worldId); if (!lair) return null;
+        const up = lair.clone().sub(this.planet.center).normalize(), t = new THREE.Vector3(-up.z, 0, up.x).normalize();
+        this.player.place(this.planet, lair.clone().addScaledVector(t, 60), t.clone().negate()); this.#snapFootCamera();
+        return true;
+      },
+      enemies: () => this.combat.enemies.map(e => ({ boss: e.boss, hp: Math.round(e.hp), d: +e.center.distanceTo(this.player.position).toFixed(1) })),
     };
   }
 

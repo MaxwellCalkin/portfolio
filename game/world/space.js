@@ -33,14 +33,14 @@ float sFbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++) { v += 
 export function createNebula() {
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, depthTest: false,
-    uniforms: { uSunDir: { value: new THREE.Vector3(...SUN_DIRECTION) } },
+    uniforms: { uSunDir: { value: new THREE.Vector3(...SUN_DIRECTION) }, uFade: { value: 1 } },
     vertexShader: /* glsl */`varying vec3 vDir;
       #include <common>
       #include <logdepthbuf_pars_vertex>
       void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       #include <logdepthbuf_vertex>
       }`,
-    fragmentShader: /* glsl */`varying vec3 vDir; uniform vec3 uSunDir;
+    fragmentShader: /* glsl */`varying vec3 vDir; uniform vec3 uSunDir; uniform float uFade;
       ${SKY_NOISE}
       #include <logdepthbuf_pars_fragment>
       void main(){
@@ -59,7 +59,7 @@ export function createNebula() {
         // Warm light bleeding around the sun direction.
         float sunGlow = pow(max(dot(d, uSunDir), 0.0), 18.0);
         sky += vec3(0.25, 0.17, 0.09) * sunGlow * 0.12;
-        gl_FragColor = vec4(sky, 1.0);
+        gl_FragColor = vec4(sky * uFade, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
