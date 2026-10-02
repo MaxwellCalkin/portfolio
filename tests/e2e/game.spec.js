@@ -1,0 +1,70 @@
+import { test, expect } from '@playwright/test';
+
+// Software-rendered CI browsers are slow: use the light preset and let the
+// simulation take larger steps so scripted play finishes in reasonable time.
+const GAME = '/?quality=low&dt=0.3';
+const ready = page => page.waitForFunction(() => document.querySelector('#game-canvas')?.dataset.ready === 'true', null, { timeout: 120000 });
+
+test.describe.configure({ timeout: 240000 });
+
+test('the portfolio chapters open before the game is ready', async ({ page }) => {
+  await page.goto(GAME);
+  await page.getByRole('link', { name: 'Philosophy' }).click();
+  await expect(page.locator('#portfolio-dialog')).toBeVisible();
+  await expect(page.locator('#dialog-title')).toContainText('A constitution');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#portfolio-dialog')).toBeHidden();
+});
+
+test('launch, read the Origin, travel and use the panels without errors', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(GAME);
+  await ready(page);
+  await expect(page.locator('#launch-button')).toBeEnabled();
+  await page.locator('#launch-button').click();
+  await expect(page.locator('body')).toHaveClass(/is-playing/);
+  await expect(page.locator('#u-objective-title')).toHaveText('Read The Origin', { timeout: 30000 });
+
+  // Walk up to the main archive and read it.
+  await page.evaluate(() => window.__unfolding.debug.place(0, -19, 0, -28));
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => window.__unfolding.debug.interact());
+  await expect(page.locator('#u-card')).toBeVisible();
+  await expect(page.locator('#u-card-title')).toHaveText('The Origin');
+  await expect(page.locator('#u-progress-discoveries')).toHaveText('1 / 9 discoveries');
+
+  // The full chapter opens from the card.
+  await page.keyboard.press('e'); // the card's primary action (the mouse may be captured)
+  await expect(page.locator('#dialog-title')).toContainText('A constitution');
+  await page.keyboard.press('Escape');
+
+  // Journal and map.
+  await page.keyboard.press('j');
+  await expect(page.locator('#dialog-title')).toContainText('What you');
+  await page.keyboard.press('j');
+  await page.keyboard.press('m');
+  await expect(page.locator('#dialog-title')).toContainText('Chart your');
+  await page.locator('[data-travel=experience]').click();
+  await expect(page.locator('#u-world-name')).toHaveText('02 · EXPERIENCE', { timeout: 60000 });
+  await expect(page.locator('#u-objective-title')).toHaveText('Read The Arc');
+  expect(errors).toEqual([]);
+});
+
+test('the journal remembers discoveries across visits', async ({ page }) => {
+  await page.goto(GAME);
+  await page.evaluate(() => localStorage.setItem('unfolding-journal-v2', JSON.stringify({ discovered: ['philosophy:origin', 'contact:signal'], shards: [], wardens: [], visited: [] })));
+  await page.reload();
+  await page.getByRole('button', { name: 'Open settings and controls' }).click();
+  await page.locator('[data-panel=journal]').first().click();
+  await expect(page.locator('.dialog-lede')).toContainText('2 of 37 discoveries');
+});
+
+test('portfolio stays readable with JavaScript disabled', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`${baseURL}/portfolio.html`);
+  await expect(page.locator('#journey')).toBeVisible();
+  await expect(page.locator('#long-form')).toBeVisible();
+  await context.close();
+});

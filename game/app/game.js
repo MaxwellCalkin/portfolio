@@ -47,6 +47,7 @@ export class Game {
     const query = new URLSearchParams(location.search);
     this.forcedQuality = query.has('quality');
     this.maxDt = Math.min(0.5, Number(query.get('dt')) || 0.05); // ?dt= lets slow test machines simulate in real time
+    this.profile = query.has('prof') ? {} : null;
   }
 
   /** QA helpers (used by dev/play.mjs; harmless in production). */
@@ -246,7 +247,9 @@ export class Game {
 
   #onLock(locked) {
     document.body.classList.toggle('is-locked', locked);
-    if (!locked && this.playing && !this.panels.isOpen && !this.leavingForLink) this.panels.open('pause');
+    // Escape frees the cursor. With a discovery card open, that lets the
+    // visitor click its links; otherwise it pauses.
+    if (!locked && this.playing && !this.panels.isOpen && !this.leavingForLink && !this.card) this.panels.open('pause');
     this.leavingForLink = false;
   }
 
@@ -371,6 +374,9 @@ export class Game {
     this.renderer.info.reset();
     if (this.paused) { this.pausedFrames = (this.pausedFrames || 0) + 1; if (this.pausedFrames % 3) return; } else this.pausedFrames = 0;
     this.time += dt;
+    const prof = this.profile, t = prof ? () => performance.now() : null;
+    let mark = prof ? t() : 0;
+    const lap = key => { if (!prof) return; const now = t(); prof[key] = (prof[key] || 0) * 0.9 + (now - mark) * 0.1; mark = now; };
     if (!this.paused) {
       if (this.mode === 'intro') this.#updateIntro(dt);
       else if (this.mode === 'foot') this.#updateFoot(dt);
@@ -378,20 +384,26 @@ export class Game {
       else if (this.mode === 'dead') this.#updateDead(dt);
       this.input.endFrame();
     }
+    lap('sim');
     const focus = this.mode === 'ship' ? this.ship.object.position : this.player.position;
     this.camera.updateMatrixWorld();
     const local = this.universe.update(this.time, this.camera, focus);
     if (this.mode === 'ship' && local.planet && local.altitude < 30000) this.#setContext(local.planet);
+    lap('universe');
     this.flora.update(focus, this.time);
+    lap('flora');
     this.landmarks.update(this.time, dt);
     this.projects.update(this.time, dt);
     if (!this.paused) {
       this.#updateWorldSystems(dt);
       this.fx.update(dt);
     }
+    lap('systems');
     this.#updateHUD(dt);
+    lap('hud');
     this.#updateSound(dt);
     this.post.render(dt);
+    lap('render');
     this.#monitorPerformance(dt);
   }
 

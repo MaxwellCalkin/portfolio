@@ -5,10 +5,11 @@ import * as THREE from 'three';
  * coverage, soft painterly lighting (bright sunlit tops, cool undersides,
  * warm terminator) and fades that hide the shell's geometry up close.
  */
-export function createCloudLayer(spec, atmo) {
+export function createCloudLayer(spec, atmo, quality = 'high') {
   const R = spec.radius, H = R * 0.17;
   const material = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    transparent: true, depthWrite: false, side: THREE.BackSide, // switched per frame: back faces from below, front faces from space
+    defines: { OCTAVES: quality === 'low' ? 3 : 4 },
     uniforms: {
       uCamPlanet: atmo.uCamPlanet, uSunDir: atmo.uSunDir,
       uRadius: { value: R + H }, uCoverage: { value: spec.clouds ?? 0.4 }, uTime: { value: 0 },
@@ -31,7 +32,7 @@ export function createCloudLayer(spec, atmo) {
       float n3(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
                    mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
-      float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++) { v += a * n3(p); p = p * 2.07 + 3.1; a *= 0.5; } return v; }
+      float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < OCTAVES; i++) { v += a * n3(p); p = p * 2.07 + 3.1; a *= 0.5; } return v / (1.0 - pow(0.5, float(OCTAVES)) + 1e-4) * 0.984; }
       void main() {
         #include <logdepthbuf_fragment>
         vec3 d = normalize(vLocal);

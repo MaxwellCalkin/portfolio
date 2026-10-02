@@ -33,7 +33,7 @@ export class Universe {
       const terrain = new PlanetTerrain({ spec, shape, material, pool: this.pool, N: quality === 'low' ? 24 : 32, splitK: quality === 'low' ? 0.8 : 1.0 });
       const shell = createAtmosphereShell(spec, atmo);
       shell.position.fromArray(spec.position);
-      const clouds = (spec.clouds ?? 0) > 0.05 ? createCloudLayer(spec, atmo) : null;
+      const clouds = (spec.clouds ?? 0) > 0.05 ? createCloudLayer(spec, atmo, quality) : null;
       this.group.add(terrain.group, shell);
       if (clouds) this.group.add(clouds);
       return { spec, shape, terrain, atmo, shell, clouds, material, fog, center: new THREE.Vector3(...spec.position) };
@@ -114,7 +114,15 @@ export class Universe {
     this.nebula.material.uniforms.uFade.value = 1 - this.local.day * this.local.inAtmosphere;
     // Clouds of the world you are on draw over its sky; other worlds' clouds
     // draw before the skies, so they sit behind your atmosphere like their ground.
-    for (const p of this.planets) if (p.clouds) p.clouds.renderOrder = p === planet && altitude < p.spec.radius * 0.6 ? 3 : 1;
+    for (const p of this.planets) {
+      if (!p.clouds) continue;
+      p.clouds.renderOrder = p === planet && altitude < p.spec.radius * 0.6 ? 3 : 1;
+      // Only one hemisphere of the shell is ever visible: draw just that side.
+      p.clouds.material.side = p.atmo.uCamPlanet.value.length() < p.clouds.material.uniforms.uRadius.value ? THREE.BackSide : THREE.FrontSide;
+    }
+    // Skip the (full-screen) nebula and stars when daylight hides them.
+    this.nebula.visible = this.nebula.material.uniforms.uFade.value > 0.02;
+    this.stars.visible = starFade > 0.02;
     this.sun.position.copy(camera.position).addScaledVector(this.sunDir, 300000);
     this.nebula.position.copy(camera.position); this.stars.position.copy(camera.position);
     return this.local;
