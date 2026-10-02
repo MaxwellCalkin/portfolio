@@ -28,6 +28,8 @@ export const FLORA_COLORS = {
  * cluster = [noise frequency (per km), threshold] for forest/clump patches.
  * ground = tint from the terrain color under the instance (grass).
  */
+/** Small or thin props never cast shadows (cost without visible benefit). */
+const NO_SHADOW = new Set(['grass_tuft', 'grass_tall', 'dune_grass', 'reed_clump', 'flower_a', 'fern_a', 'rock_pebbles', 'coral_fan', 'glow_bulb']);
 const L = (asset, o) => ({ asset, density: 1, view: 120, scale: [0.8, 1.2], veg: [0, 1], slopeMax: 0.25, minAboveSea: 0.8, ...o });
 export const RECIPES = {
   philosophy: [
@@ -44,10 +46,10 @@ export const RECIPES = {
     L('rock_pebbles', { density: 6, view: 60, slopeMax: 0.5, scale: [0.7, 1.6], tilt: 1 }),
   ],
   experience: [
-    L('dune_grass', { density: 70, view: 50, ground: true, veg: [0.25, 1], scale: [0.8, 1.4] }),
-    L('grass_tuft', { density: 90, view: 44, ground: true, veg: [0.45, 1], cluster: [10, 0.15] }),
-    L('bush_round', { density: 1.2, view: 140, veg: [0.4, 1], scale: [0.6, 1.1] }),
-    L('cactus_alien', { density: 1.5, view: 160, veg: [0.2, 1], scale: [0.7, 1.4], collider: true, avoidPaths: true }),
+    L('dune_grass', { density: 150, view: 50, ground: true, veg: [0.3, 1], scale: [0.8, 1.5] }),
+    L('grass_tuft', { density: 160, view: 44, ground: true, veg: [0.5, 1], cluster: [10, 0.1] }),
+    L('bush_round', { density: 2.2, view: 140, veg: [0.45, 1], scale: [0.6, 1.1] }),
+    L('cactus_alien', { density: 2.2, view: 180, veg: [0.3, 1], scale: [0.7, 1.5], collider: true, avoidPaths: true }),
     L('rock_boulder', { density: 2.2, view: 220, slopeMax: 0.7, scale: [0.8, 3], tilt: 0.7, collider: true, avoidPaths: true }),
     L('rock_slab', { density: 1.2, view: 220, slopeMax: 0.6, scale: [0.8, 2.2], tilt: 0.8, collider: true, avoidPaths: true }),
     L('rock_spire', { density: 0.25, view: 420, slopeMax: 0.3, scale: [0.8, 2.2], collider: true, avoidPaths: true }),
@@ -75,9 +77,9 @@ export const RECIPES = {
     L('coral_fan', { density: 12, view: 70, minAboveSea: 0.2, maxHeight: 1.8, slopeMax: 0.4, tilt: 0.5 }),
   ],
   contact: [
-    L('dune_grass', { density: 60, view: 50, ground: true, veg: [0.2, 1], scale: [0.8, 1.5] }),
-    L('tree_palm', { density: 2.5, view: 280, veg: [0.45, 1], cluster: [5, 0.25], scale: [0.85, 1.35], collider: true, avoidPaths: true }),
-    L('cactus_alien', { density: 1.0, view: 160, veg: [0.1, 1], scale: [0.7, 1.4], collider: true, avoidPaths: true }),
+    L('dune_grass', { density: 130, view: 50, ground: true, veg: [0.2, 1], scale: [0.8, 1.6] }),
+    L('tree_palm', { density: 3.5, view: 300, veg: [0.4, 1], cluster: [5, 0.2], scale: [0.85, 1.4], collider: true, avoidPaths: true }),
+    L('cactus_alien', { density: 1.6, view: 180, veg: [0.1, 1], scale: [0.7, 1.4], collider: true, avoidPaths: true }),
     L('bush_round', { density: 0.8, view: 140, veg: [0.4, 1], scale: [0.6, 1.1] }),
     L('rock_boulder', { density: 1.0, view: 220, slopeMax: 0.7, scale: [0.8, 2.6], tilt: 0.6, collider: true, avoidPaths: true }),
     L('rock_slab', { density: 0.8, view: 220, slopeMax: 0.6, scale: [0.8, 2.2], tilt: 0.8, collider: true, avoidPaths: true }),
@@ -153,6 +155,8 @@ export class Flora {
     this.viewScale = quality === 'low' ? 0.6 : quality === 'medium' ? 0.8 : 1;
     this.group = new THREE.Group(); this.group.name = 'flora'; parent.add(this.group);
     this.assets = extractAssets(gltf);
+    // Far LOD variants (<asset>_far) take over beyond a per-layer distance.
+    this.farOf = new Map((manifest || []).filter(e => e.far && this.assets.has(e.far)).map(e => [e.name, e.far]));
     this.colliderMeta = Object.fromEntries((manifest || []).filter(e => e.collider).map(e => [e.name, { radius: e.collider.radius, height: e.collider.height }]));
     this.uniforms = { uTime: { value: 0 } };
     this.materials = new Map();
@@ -180,7 +184,7 @@ export class Flora {
   #poolFor(asset) {
     if (!this.pools.has(asset)) {
       const parts = this.assets.get(asset);
-      const pool = { parts, meshes: [], capacity: 0 };
+      const pool = { parts, meshes: [], capacity: 0, asset, far: /_far$/.test(asset) };
       this.#allocate(pool, 256);
       this.pools.set(asset, pool);
     }
@@ -198,7 +202,9 @@ export class Flora {
     pool.meshes = pool.parts.map(part => {
       const mesh = new THREE.InstancedMesh(part.geometry, mats?.[part.material] || mats?.Rock || new THREE.MeshStandardMaterial(), capacity);
       mesh.instanceMatrix = pool.matrix; mesh.instanceColor = pool.color;
-      mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.count = 0; mesh.frustumCulled = false; mesh.receiveShadow = true;
+      // Only nearby, substantial props cast shadows (the shadow frustum is ~90 m wide anyway).
+      mesh.castShadow = !pool.far && !NO_SHADOW.has(pool.asset);
       mesh.matrixAutoUpdate = false;
       mesh.userData.slot = part.material;
       this.group.add(mesh);
@@ -227,7 +233,10 @@ export class Flora {
       exclusions: layout ? { frame: spec.frame, plateauCos: Math.cos((plateau + 60) / spec.radius), zones } : null,
     });
     const mats = this.#materialsFor(spec.id);
-    for (const layer of this.recipe) for (const mesh of this.#poolFor(layer.asset).meshes) mesh.material = mats[mesh.userData.slot] || mats.Rock;
+    for (const layer of this.recipe) {
+      const names = [layer.asset, this.farOf.get(layer.asset)].filter(Boolean);
+      for (const name of names) for (const mesh of this.#poolFor(name).meshes) mesh.material = mats[mesh.userData.slot] || mats.Rock;
+    }
   }
 
   #cellsAround(local, radius) {
@@ -295,8 +304,10 @@ export class Flora {
     const cells = this.wanted.map(c => this.cells.get(c.key)).filter(Boolean);
     this.recipe.forEach((layer, li) => {
       const view = layer.view * this.viewScale, view2 = (view + 2) ** 2, pool = this.#poolFor(layer.asset);
-      used.add(layer.asset);
-      let count = 0;
+      const farName = this.farOf.get(layer.asset), farPool = farName ? this.#poolFor(farName) : null;
+      const lod = (layer.lod ?? Math.min(60, view * 0.28)) * this.viewScale, lod2 = lod * lod;
+      used.add(layer.asset); if (farName) used.add(farName);
+      const counts = new Map([[pool, 0]]); if (farPool) counts.set(farPool, 0);
       for (const cell of cells) {
         const data = cell.layers[li]; if (!data) continue;
         for (let o = 0; o < data.length; o += STRIDE) {
@@ -304,16 +315,20 @@ export class Flora {
           if (d2 > view2) continue;
           const fade = 1 - smoothstep(view * 0.8, view, Math.sqrt(d2));
           if (fade <= 0.03) continue;
-          if (count >= pool.capacity) this.#allocate(pool, pool.capacity * 2);
+          const target = farPool && d2 > lod2 ? farPool : pool;
+          let count = counts.get(target);
+          if (count >= target.capacity) this.#allocate(target, target.capacity * 2);
           p.set(dx, dy, dz); q.set(data[o + 3], data[o + 4], data[o + 5], data[o + 6]); s.setScalar(data[o + 7] * fade);
-          m.compose(p, q, s).toArray(pool.matrix.array, count * 16);
-          color.setRGB(data[o + 8], data[o + 9], data[o + 10]).toArray(pool.color.array, count * 3);
-          count++;
+          m.compose(p, q, s).toArray(target.matrix.array, count * 16);
+          color.setRGB(data[o + 8], data[o + 9], data[o + 10]).toArray(target.color.array, count * 3);
+          counts.set(target, count + 1);
         }
       }
-      for (const mesh of pool.meshes) { mesh.count = count; mesh.position.copy(this.origin); mesh.updateMatrix(); mesh.updateMatrixWorld(); }
-      pool.matrix.needsUpdate = true; pool.color.needsUpdate = true;
-      total += count;
+      for (const [target, count] of counts) {
+        for (const mesh of target.meshes) { mesh.count = count; mesh.position.copy(this.origin); mesh.updateMatrix(); mesh.updateMatrixWorld(); }
+        target.matrix.needsUpdate = true; target.color.needsUpdate = true;
+        total += count;
+      }
     });
     for (const [asset, pool] of this.pools) if (!used.has(asset)) for (const mesh of pool.meshes) mesh.count = 0;
     this.stats.instances = total;

@@ -102,7 +102,7 @@ export class Landmarks {
       }
       if (/^POI_/.test(name)) {
         const position = o.getWorldPosition(new THREE.Vector3());
-        const discovery = discoveryFor(world.id, item.id, name);
+        const discovery = /^POI_pad_/.test(name) || name === 'POI_board' ? null : discoveryFor(world.id, item.id, name);
         world.pois.push({ name, landmark: item.id, node: item.node, position, discovery, up: item.up });
       } else if (/^LABEL_/.test(name)) {
         world.labels.push({ name, landmark: item.id, position: o.getWorldPosition(new THREE.Vector3()) });

@@ -47,7 +47,7 @@ export const LAYOUTS = {
     ],
   },
   experience: {
-    plateau: { radius: 150, falloff: 120, mound: 2 },
+    plateau: { radius: 150, falloff: 170, mound: 2 },
     spawn: [0, 44], ship: [38, 52], shipYaw: -0.4,
     landmarks: [
       { id: 'arc', node: 'arc_gate', at: [0, -10], yaw: 0, clear: 18 },

@@ -57,6 +57,7 @@ export class Game {
         const facing = f.position.clone().sub(p.position); facing.addScaledVector(p.up, -facing.dot(p.up)).normalize();
         this.player.place(planet, p.position, facing); this.rig.lookAlong(p.up, facing, -0.12); this.#snapFootCamera();
       },
+      info: () => ({ calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles, geometries: this.renderer.info.memory.geometries, textures: this.renderer.info.memory.textures, flora: { ...this.flora.stats }, terrain: this.universe.stats().find(s => s.id === this.worldId), programs: this.renderer.info.programs?.length }),
       state: () => ({ mode: this.mode, world: this.worldId, ship: this.ship.state, pos: this.player.position.toArray().map(v => +v.toFixed(1)), alt: +this.universe.local.altitude.toFixed(1), time: +this.time.toFixed(2), card: this.card?.id ?? null, found: this.journal.progress().found, score: this.run.score }),
       interact: () => this.#interact(),
       board: () => this.#board(),
@@ -73,6 +74,13 @@ export class Game {
         const at = s.item.position.clone().addScaledVector(s.item.up, -1.6).add(new THREE.Vector3(3, 0, 0));
         this.player.place(this.planet, at, this.player.heading); this.#snapFootCamera();
         return { id: s.item.id, distance: +s.distance.toFixed(1) };
+      },
+      toPoi: name => {
+        const world = this.landmarks.worlds.get(this.worldId); const poi = world?.pois.find(p => p.name === name || p.discovery?.id === name);
+        if (!poi) return null;
+        const at = poi.position.clone(), up = at.clone().sub(this.planet.center).normalize();
+        this.player.position.copy(at).addScaledVector(up, 0.3); this.player.velocity.set(0, 0, 0); this.player.grounded = false; this.#snapFootCamera();
+        return poi.name;
       },
       toLair: () => {
         const lair = this.lairs.get(this.worldId); if (!lair) return null;
@@ -95,6 +103,7 @@ export class Game {
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.info.autoReset = false; // post-processing renders several passes; count the whole frame
     this.canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault(); this.lost = true;
       document.body.classList.add('is-error'); document.body.classList.remove('is-playing');
@@ -359,6 +368,7 @@ export class Game {
   #frame() {
     if (this.lost) return;
     const dt = Math.min(this.clock.getDelta(), this.maxDt);
+    this.renderer.info.reset();
     if (this.paused) { this.pausedFrames = (this.pausedFrames || 0) + 1; if (this.pausedFrames % 3) return; } else this.pausedFrames = 0;
     this.time += dt;
     if (!this.paused) {

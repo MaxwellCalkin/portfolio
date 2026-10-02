@@ -186,10 +186,12 @@ export function createPlanetShape(spec) {
   function colorAt(x, y, z, h, slope, out, o) {
     const patch = n2(x * 38, y * 38, z * 38) * 0.5 + 0.5;
     const speck = n5(x * 260, y * 260, z * 260) * 0.5 + 0.5;
+    // Mid-scale patches (tens of meters) keep wide plateaus from reading flat.
+    const mid = n3(x * 150 + 3.1, y * 150, z * 150 - 1.7) * 0.5 + 0.5;
     const rockiness = smoothstep(0.1, 0.26, slope + (speck - 0.5) * 0.06);
     let glow = 0;
-    mix3(c1, P.grassA, P.grassB, smoothstep(0.25, 0.75, patch));
-    mix3(c1, c1, P.grassC, smoothstep(0.62, 0.9, speck) * 0.55);
+    mix3(c1, P.grassA, P.grassB, smoothstep(0.25, 0.75, patch * 0.6 + mid * 0.4));
+    mix3(c1, c1, P.grassC, Math.max(smoothstep(0.62, 0.9, speck) * 0.55, smoothstep(0.62, 0.85, mid) * 0.45));
     switch (kind) {
       case 'archipelago':
       case 'ocean': {
@@ -206,13 +208,15 @@ export function createPlanetShape(spec) {
         const band = (h / 26) % 3;
         const strata = band < 1 ? P.strataA : band < 2 ? P.strataB : P.strataC;
         mix3(c2, strata, P.rockA, smoothstep(0.3, 0.7, n3(x * 30, y * 300, z * 30) * 0.5 + 0.5) * 0.35);
-        mix3(c1, c1, P.dirt, smoothstep(0.4, 0.8, patch) * 0.6);
+        mix3(c1, c1, P.dirt, Math.max(smoothstep(0.4, 0.8, patch) * 0.6, smoothstep(0.58, 0.82, mid) * 0.55));
+        mix3(c1, c1, P.strataC, smoothstep(0.3, 0.12, mid) * 0.22);
         mix3(c1, c1, c2, rockiness);
         mix3(c1, c1, P.sand, smoothstep(6, 0, h) * 0.7);
         break;
       }
       case 'crystal': {
         mix3(c2, P.rockB, P.rockA, patch);
+        mix3(c1, c1, P.dirt, smoothstep(0.6, 0.85, mid) * 0.5);
         mix3(c1, c1, c2, rockiness);
         mix3(c1, c1, P.cliff, smoothstep(0.4, 0.7, slope));
         glow = smoothstep(0.72, 0.8, Math.abs(n4(x * 70, y * 70, z * 70))) * (1 - rockiness);
@@ -220,7 +224,9 @@ export function createPlanetShape(spec) {
       }
       case 'dunes':
       default: {
-        mix3(c1, P.sand, P.dirt, smoothstep(0.55, 0.95, patch) * 0.5);
+        mix3(c1, P.sand, P.dirt, Math.max(smoothstep(0.55, 0.95, patch) * 0.5, smoothstep(0.6, 0.85, mid) * 0.4));
+        // Wind ripples: faint bands across the sand.
+        mix3(c1, c1, P.grassC, (Math.sin((x * 0.8 + z * 0.6) * R * 0.14 + n6(x * 40, y * 40, z * 40) * 5) * 0.5 + 0.5) * 0.1 * (1 - rockiness));
         const scrub = smoothstep(0.6, 0.85, n3(x * 60, y * 60, z * 60) * 0.5 + 0.5) * (1 - smoothstep(0.05, 0.15, slope));
         mix3(c1, c1, P.grassA, scrub * 0.6);
         mix3(c2, P.rockA, P.rockB, smoothstep(70, 110, h));
@@ -244,9 +250,10 @@ export function createPlanetShape(spec) {
     if (seaLevel !== null && h < seaLevel + 1.2) return 0;
     const patch = n2(x * 38, y * 38, z * 38) * 0.5 + 0.5;
     const flat = 1 - smoothstep(0.08, 0.2, slope);
-    if (kind === 'dunes') return flat * smoothstep(0.6, 0.85, n3(x * 60, y * 60, z * 60) * 0.5 + 0.5);
-    if (kind === 'canyons') return flat * (0.25 + 0.75 * smoothstep(0.3, 0.8, patch));
-    return flat * (0.35 + 0.65 * smoothstep(0.2, 0.7, patch));
+    const mid = n3(x * 150 + 3.1, y * 150, z * 150 - 1.7) * 0.5 + 0.5;
+    if (kind === 'dunes') return flat * Math.max(smoothstep(0.6, 0.85, n3(x * 60, y * 60, z * 60) * 0.5 + 0.5), smoothstep(0.55, 0.85, mid) * 0.7);
+    if (kind === 'canyons') return flat * (0.2 + 0.8 * smoothstep(0.3, 0.8, patch * 0.5 + mid * 0.5));
+    return flat * (0.35 + 0.65 * smoothstep(0.2, 0.7, patch * 0.6 + mid * 0.4));
   }
 
   function siteFrame(dir, hint) { return tangentFrame(dir, hint); }

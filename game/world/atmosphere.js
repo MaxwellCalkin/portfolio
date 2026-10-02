@@ -17,8 +17,11 @@ export function atmosphereParams(spec) {
   const thickness = top - R, scaleR = thickness * 0.26, scaleM = thickness * 0.1;
   const density = a.density ?? 1;
   const betaR = a.rayleigh.map(c => c * 0.26 * density / scaleR);
-  const betaM = 0.03 * (a.mie ?? 0.7) * density / scaleM;
-  return { radius: R, top, scaleR, scaleM, betaR, betaM, mieG: 0.8, sunIntensity: 16, night: a.night, sunset: a.sunset };
+  // Mie haze can be tinted per world (warm dust, violet mist); scattering
+  // stays energy-balanced because extinction uses the same tinted beta.
+  const tint = a.mieTint ?? [1, 1, 1];
+  const betaM = tint.map(c => c * 0.03 * (a.mie ?? 0.7) * density / scaleM);
+  return { radius: R, top, scaleR, scaleM, betaR, betaM, mieG: 0.8, sunIntensity: a.sun ?? 16, night: a.night, sunset: a.sunset };
 }
 
 /* ------------------------------------------------------------------ GLSL */
@@ -30,7 +33,7 @@ uniform float uAtmoRadius;
 uniform float uScaleR;
 uniform float uScaleM;
 uniform vec3 uBetaR;
-uniform float uBetaM;
+uniform vec3 uBetaM;
 uniform float uMieG;
 uniform float uSunIntensity;
 uniform vec3 uNightGlow;
@@ -143,7 +146,7 @@ export function createAtmosphereUniforms(spec, quality = 'high') {
     uScaleR: { value: p.scaleR },
     uScaleM: { value: p.scaleM },
     uBetaR: { value: new THREE.Vector3(...p.betaR) },
-    uBetaM: { value: p.betaM },
+    uBetaM: { value: new THREE.Vector3(...p.betaM) },
     uMieG: { value: p.mieG },
     uSunIntensity: { value: p.sunIntensity },
     uNightGlow: { value: new THREE.Vector3(...p.night).multiplyScalar(0.5) },
@@ -200,14 +203,14 @@ export function scatterCPU(p, ro, rd, sunDir, steps = 12) {
     let vis = 1;
     if (along < 0) { const cl = Math.hypot(pos[0] - sunDir[0] * along, pos[1] - sunDir[1] * along, pos[2] - sunDir[2] * along); const x = Math.min(1, Math.max(0, (cl - p.radius * 0.985) / (p.radius * 0.035))); vis = x * x * (3 - 2 * x); }
     for (let c = 0; c < 3; c++) {
-      const att = Math.exp(-(p.betaR[c] * (odR + lodR) + p.betaM * 1.1 * (odM + lodM))) * vis;
+      const att = Math.exp(-(p.betaR[c] * (odR + lodR) + p.betaM[c] * 1.1 * (odM + lodM))) * vis;
       sumR[c] += dR * att; sumM[c] += dM * att;
     }
   }
   const mu = rd[0] * sunDir[0] + rd[1] * sunDir[1] + rd[2] * sunDir[2], g = p.mieG;
   const phaseR = 0.0596831 * (1 + mu * mu);
   const phaseM = 0.1193662 * ((1 - g * g) * (1 + mu * mu)) / ((2 + g * g) * Math.pow(Math.max(1 + g * g - 2 * g * mu, 1e-4), 1.5));
-  return [0, 1, 2].map(c => p.sunIntensity * (sumR[c] * p.betaR[c] * phaseR + sumM[c] * p.betaM * phaseM));
+  return [0, 1, 2].map(c => p.sunIntensity * (sumR[c] * p.betaR[c] * phaseR + sumM[c] * p.betaM[c] * phaseM));
 }
 
 /**
