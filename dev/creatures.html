@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Creature lineup</title><style>html,body{margin:0;height:100%;background:#8aa}canvas{display:block}</style></head>
+<body><script type="module">
+import * as THREE from 'three';
+import { createCreature, createBoss } from '../game/creatures.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.NeutralToneMapping; r.shadowMap.enabled = true;
+document.body.append(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color('#9fc4c8');
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 500);
+s.add(new THREE.HemisphereLight('#dff', '#665', 1.6));
+const sun = new THREE.DirectionalLight('#fff', 3); sun.position.set(-8, 14, 10); sun.castShadow = true; sun.shadow.camera.left = sun.shadow.camera.bottom = -30; sun.shadow.camera.right = sun.shadow.camera.top = 30; s.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: '#7a9a8a' })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; s.add(ground);
+const q = new URLSearchParams(location.search);
+const list = q.get('boss') ? ['philosophy', 'experience', 'projects', 'mission', 'contact'].map(id => createBoss(id)) : [0, 1, 2].map(i => createCreature(i));
+let x = -(list.length - 1) / 2 * (q.get('boss') ? 9 : 4.5);
+for (const m of list) { m.position.set(x, m.userData.groundOffset || 1, 0); m.rotation.y = 0.5; m.traverse(o => { if (o.isMesh) o.castShadow = true; }); s.add(m); x += q.get('boss') ? 9 : 4.5; }
+const d = q.get('boss') ? 34 : 15; cam.position.set(0, d * 0.35, d); cam.lookAt(0, q.get('boss') ? 3 : 1.2, 0);
+let t = 0; function frame() { t += 0.016; for (const m of list) m.userData.update?.(t, 0.016); r.render(s, cam); requestAnimationFrame(frame); }
+frame(); setTimeout(() => { window.__ready = true; }, 1500);
+</script></body></html>

@@ -54,6 +54,8 @@ export class Landmarks {
       this.group.add(world.group);
       const place = (node, mark, extra = {}) => {
         const object = node.clone(true);
+        // Heard Us keeps its own navy and gold identity (per-item material copies).
+        if (mark.id === 'heard-us') object.traverse(o => { if (o.isMesh && o.material?.name === 'Accent') { o.material = o.material.clone(); o.material.color.set('#e9c46a'); o.material.userData.styled = false; } });
         let yaw = mark.yaw ?? 0;
         if (mark.face) yaw = Math.atan2(-(mark.face[0] - mark.at[0]), -(mark.face[1] - mark.at[1])) + Math.PI; // front (+Z) toward the target
         const p = Landmarks.placement(planet, mark.at[0], mark.at[1], yaw, extra.sink ?? 0.05);
@@ -126,8 +128,6 @@ export class Landmarks {
       else if (slot === 'Glass') { m.roughness = 0.12; m.metalness = 0.2; m.envMapIntensity = 1; if (m.emissive) { m.emissive.copy(m.color).multiplyScalar(0.25); } }
       else if (slot === 'Metal') { m.roughness = Math.min(m.roughness, 0.45); m.metalness = Math.max(m.metalness, 0.5); }
       else { m.roughness = Math.max(0.55, m.roughness); }
-      // Heard Us uses its own navy and gold identity.
-      if (spec.id === 'projects' && slot === 'Accent' && mesh.parent && /heard/.test(nameOf(rootOf(mesh)))) m.color.set('#e9c46a');
     }
   }
 
@@ -157,7 +157,6 @@ export class Landmarks {
   setActive(worldId) { for (const [id, world] of this.worlds) world.group.visible = id === worldId; }
 }
 
-function rootOf(o) { while (o.parent && o.parent.parent && o.parent.parent.type !== 'Scene' && o.parent.name !== '') o = o.parent; return o; }
 function collectGlow(object) {
   const set = new Set();
   object.traverse(o => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m.name === 'Glow') { const c = m.clone(); o.material = c; set.add(c); } });

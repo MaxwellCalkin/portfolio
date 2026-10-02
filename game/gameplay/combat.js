@@ -82,7 +82,17 @@ export class Combat {
       stagger: 0, charge: 0, home: position.clone(), aggro: false, volley: 0,
     };
     e.maxHp = e.hp;
-    mesh.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+    // Match the worlds' matte, painterly look (the source sculpts are glossy).
+    mesh.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (!m || m.userData.matte) continue;
+        m.userData.matte = true;
+        m.roughness = Math.max(m.roughness ?? 0.6, m.emissiveIntensity > 1 ? 0.3 : 0.62);
+        m.metalness = Math.min(m.metalness ?? 0, 0.18);
+      }
+    });
     this.group.add(mesh);
     this.enemies.push(e);
     return e;
@@ -166,7 +176,7 @@ export class Combat {
       d.done = true;
       const a = ABILITIES.drop;
       for (const [color, size, life] of [['#c9a6ff', a.radius, 1.3], ['#8cf0d1', a.radius * 0.8, 1.0], ['#ffffff', a.radius * 0.5, 0.6]]) this.fx.ring(d.center.clone().addScaledVector(d.up, 0.6), d.up, color, size, life);
-      this.fx.flash(d.center.clone().addScaledVector(d.up, 4), '#e8dcff', 60, 0.5);
+      this.fx.flash(d.center.clone().addScaledVector(d.up, 4), '#e8dcff', 26, 0.45);
       this.fx.sparks(d.center.clone().addScaledVector(d.up, 1), '#e5d8ff', 70, 30, d.up);
       for (const e of [...this.enemies]) if (e.center.distanceTo(d.center) < a.radius + e.radius) { this.damage(e, e.boss ? a.damage * 1.8 : a.damage, e.center, { ability: true }); if (!e.dead) e.stagger = 2.2; }
       this.events.onDrop?.(d.center);

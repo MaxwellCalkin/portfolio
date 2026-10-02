@@ -33,10 +33,10 @@ const NO_SHADOW = new Set(['grass_tuft', 'grass_tall', 'dune_grass', 'reed_clump
 const L = (asset, o) => ({ asset, density: 1, view: 120, scale: [0.8, 1.2], veg: [0, 1], slopeMax: 0.25, minAboveSea: 0.8, ...o });
 export const RECIPES = {
   philosophy: [
-    L('grass_tuft', { density: 1500, view: 24, ground: true, veg: [0.12, 1], scale: [0.85, 1.4] }),
-    L('grass_tall', { density: 260, view: 52, ground: true, veg: [0.3, 1], scale: [0.8, 1.35] }),
-    L('flower_a', { density: 40, view: 55, veg: [0.4, 1], cluster: [18, 0.15], scale: [0.8, 1.3] }),
-    L('fern_a', { density: 16, view: 70, veg: [0.5, 1], cluster: [9, 0.1] }),
+    L('grass_tuft', { density: 1500, view: 24, ground: true, veg: [0.12, 1], scale: [0.85, 1.4], avoidPaths: true }),
+    L('grass_tall', { density: 260, view: 52, ground: true, veg: [0.3, 1], scale: [0.8, 1.35], avoidPaths: true }),
+    L('flower_a', { density: 40, view: 55, veg: [0.4, 1], cluster: [18, 0.15], scale: [0.8, 1.3], avoidPaths: true }),
+    L('fern_a', { density: 16, view: 70, veg: [0.5, 1], cluster: [9, 0.1], avoidPaths: true }),
     L('bush_round', { density: 9, view: 150, veg: [0.35, 1], cluster: [6, 0.0], scale: [0.8, 1.6] }),
     L('tree_round', { density: 22, view: 300, veg: [0.4, 1], cluster: [2.6, 0.08], scale: [0.85, 1.4], collider: true, avoidPaths: true }),
     L('tree_pine', { density: 10, view: 300, veg: [0.3, 1], minHeight: 26, cluster: [3.4, 0.0], scale: [0.8, 1.4], collider: true, avoidPaths: true }),
@@ -46,8 +46,8 @@ export const RECIPES = {
     L('rock_pebbles', { density: 6, view: 60, slopeMax: 0.5, scale: [0.7, 1.6], tilt: 1 }),
   ],
   experience: [
-    L('dune_grass', { density: 150, view: 50, ground: true, veg: [0.3, 1], scale: [0.8, 1.5] }),
-    L('grass_tuft', { density: 160, view: 44, ground: true, veg: [0.5, 1], cluster: [10, 0.1] }),
+    L('dune_grass', { density: 150, view: 50, ground: true, veg: [0.3, 1], scale: [0.8, 1.5], avoidPaths: true }),
+    L('grass_tuft', { density: 160, view: 44, ground: true, veg: [0.5, 1], cluster: [10, 0.1], avoidPaths: true }),
     L('bush_round', { density: 2.2, view: 140, veg: [0.45, 1], scale: [0.6, 1.1] }),
     L('cactus_alien', { density: 2.2, view: 180, veg: [0.3, 1], scale: [0.7, 1.5], collider: true, avoidPaths: true }),
     L('rock_boulder', { density: 2.2, view: 220, slopeMax: 0.7, scale: [0.8, 3], tilt: 0.7, collider: true, avoidPaths: true }),
@@ -56,8 +56,8 @@ export const RECIPES = {
     L('rock_pebbles', { density: 5, view: 60, slopeMax: 0.6, tilt: 1 }),
   ],
   projects: [
-    L('grass_tuft', { density: 300, view: 46, ground: true, veg: [0.15, 1], scale: [0.8, 1.3] }),
-    L('flower_a', { density: 16, view: 55, veg: [0.4, 1], cluster: [16, 0.3] }),
+    L('grass_tuft', { density: 300, view: 46, ground: true, veg: [0.15, 1], scale: [0.8, 1.3], avoidPaths: true }),
+    L('flower_a', { density: 16, view: 55, veg: [0.4, 1], cluster: [16, 0.3], avoidPaths: true }),
     L('crystal_cluster', { density: 2.2, view: 220, slopeMax: 0.5, scale: [0.7, 2], tilt: 0.4, collider: true, avoidPaths: true }),
     L('crystal_spire', { density: 0.18, view: 520, slopeMax: 0.4, scale: [0.7, 1.6], collider: true, avoidPaths: true }),
     L('tree_umbrella', { density: 2.6, view: 280, veg: [0.35, 1], cluster: [3.5, 0.08], scale: [0.8, 1.5], collider: true, avoidPaths: true }),
@@ -65,10 +65,10 @@ export const RECIPES = {
     L('rock_slab', { density: 0.8, view: 200, slopeMax: 0.6, scale: [0.8, 1.8], tilt: 0.8, collider: true, avoidPaths: true }),
   ],
   mission: [
-    L('grass_tuft', { density: 300, view: 46, ground: true, veg: [0.15, 1], scale: [0.8, 1.3] }),
-    L('grass_tall', { density: 50, view: 60, ground: true, veg: [0.5, 1], cluster: [10, 0.15] }),
-    L('flower_a', { density: 12, view: 55, veg: [0.45, 1], cluster: [15, 0.3] }),
-    L('fern_a', { density: 8, view: 70, veg: [0.5, 1], cluster: [8, 0.15] }),
+    L('grass_tuft', { density: 300, view: 46, ground: true, veg: [0.15, 1], scale: [0.8, 1.3], avoidPaths: true }),
+    L('grass_tall', { density: 50, view: 60, ground: true, veg: [0.5, 1], cluster: [10, 0.15], avoidPaths: true }),
+    L('flower_a', { density: 12, view: 55, veg: [0.45, 1], cluster: [15, 0.3], avoidPaths: true }),
+    L('fern_a', { density: 8, view: 70, veg: [0.5, 1], cluster: [8, 0.15], avoidPaths: true }),
     L('tree_pine', { density: 5, view: 280, veg: [0.35, 1], cluster: [3.2, 0.06], scale: [0.8, 1.5], collider: true, avoidPaths: true }),
     L('bush_round', { density: 3, view: 140, veg: [0.35, 1], cluster: [6, 0.15] }),
     L('rock_boulder', { density: 1.4, view: 220, slopeMax: 0.7, scale: [0.6, 2.6], tilt: 0.6, collider: true, avoidPaths: true }),
@@ -77,7 +77,7 @@ export const RECIPES = {
     L('coral_fan', { density: 12, view: 70, minAboveSea: 0.2, maxHeight: 1.8, slopeMax: 0.4, tilt: 0.5 }),
   ],
   contact: [
-    L('dune_grass', { density: 130, view: 50, ground: true, veg: [0.2, 1], scale: [0.8, 1.6] }),
+    L('dune_grass', { density: 130, view: 50, ground: true, veg: [0.2, 1], scale: [0.8, 1.6], avoidPaths: true }),
     L('tree_palm', { density: 3.5, view: 300, veg: [0.4, 1], cluster: [5, 0.2], scale: [0.85, 1.4], collider: true, avoidPaths: true }),
     L('cactus_alien', { density: 1.6, view: 180, veg: [0.1, 1], scale: [0.7, 1.4], collider: true, avoidPaths: true }),
     L('bush_round', { density: 0.8, view: 140, veg: [0.4, 1], scale: [0.6, 1.1] }),

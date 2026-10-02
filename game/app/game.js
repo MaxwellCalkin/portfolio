@@ -416,10 +416,11 @@ export class Game {
     const facing = _w.copy(p.heading);
     const sway = Math.sin(this.time * (this.settings.reducedMotion ? 0.05 : 0.11)) * 0.62 + 0.28;
     const dir = facing.clone().applyAxisAngle(up, sway);
-    const eye = center.clone().addScaledVector(dir, 5.2).addScaledVector(up, 0.55);
-    const right = new THREE.Vector3().crossVectors(_u.copy(center).sub(eye).normalize(), up).normalize();
+    // Landscape: the agent stands right of the title. Portrait: below it.
     const wide = innerWidth / innerHeight > 1.15;
-    const look = center.clone().addScaledVector(right, wide ? -1.7 : 0).addScaledVector(up, wide ? 0.1 : -0.55);
+    const eye = center.clone().addScaledVector(dir, wide ? 5.2 : 7.4).addScaledVector(up, wide ? 0.55 : 0.9);
+    const right = new THREE.Vector3().crossVectors(_u.copy(center).sub(eye).normalize(), up).normalize();
+    const look = center.clone().addScaledVector(right, wide ? -1.7 : 0).addScaledVector(up, wide ? 0.1 : 2.3);
     const m = new THREE.Matrix4().lookAt(eye, look, up);
     this.camera.position.copy(eye); this.camera.quaternion.setFromRotationMatrix(m); this.camera.up.copy(up);
     this.rig.position.copy(eye); this.rig.quaternion.copy(this.camera.quaternion);
