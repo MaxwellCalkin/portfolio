@@ -10,3 +10,4 @@ test-results/
 # Unoptimized Blender exports (regenerate with art/blender/*.py)
 public/models/*.raw.glb
 art/build/
+__pycache__/
