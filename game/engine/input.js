@@ -93,7 +93,10 @@ export class Input {
   }
   requestLock() {
     if (this.locked || !this.enabled || matchMedia('(pointer: coarse)').matches) return;
-    try { const p = this.canvas.requestPointerLock({ unadjustedMovement: true }); p?.catch?.(() => { try { this.canvas.requestPointerLock(); } catch {} }); } catch { try { this.canvas.requestPointerLock(); } catch {} }
+    // Browsers may refuse (no user gesture yet, right after Escape, or no raw
+    // mouse input): that is expected, and the next click on the world retries.
+    const plain = () => { try { this.canvas.requestPointerLock()?.catch?.(() => {}); } catch { /* refused */ } };
+    try { const p = this.canvas.requestPointerLock({ unadjustedMovement: true }); if (p?.catch) p.catch(plain); } catch { plain(); }
   }
   releaseLock() { if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
   /** Virtual buttons (touch UI) call these. */
