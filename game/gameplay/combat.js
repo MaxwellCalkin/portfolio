@@ -17,7 +17,7 @@ export const ABILITIES = Object.freeze({
 
 const BOSS_SCALE = 1.8;
 const ENEMY = { speed: 4.2, range: 16, aggro: 55, boltSpeed: 36, boltDamage: 9, hp: 110, contact: 16 };
-const _v = new THREE.Vector3(), _w = new THREE.Vector3();
+const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _p = new THREE.Vector3();
 
 export class Combat {
   constructor(scene, { fx, sound, events }) {
@@ -192,6 +192,8 @@ export class Combat {
     this.#updateDrop(dt);
     // ---- wild spawning (only on a planet surface, outside sanctuaries)
     const onPlanet = planet && ctx.onFoot;
+    // Inside the site's sanctuary nothing pursues, touches or shoots the agent.
+    const safe = Boolean(onPlanet && ctx.sanctuary(player.position));
     const wild = this.enemies.filter(e => !e.boss);
     if (onPlanet) {
       this.spawnTimer -= dt;
@@ -222,7 +224,8 @@ export class Combat {
       const tangent = toPlayer.clone().addScaledVector(e.up, -toPlayer.dot(e.up));
       const flat = tangent.length();
       if (flat > 1e-3) tangent.divideScalar(flat);
-      if (dist < (e.boss ? 70 : ENEMY.aggro)) e.aggro = true;
+      if (safe) e.aggro = false;
+      else if (dist < (e.boss ? 70 : ENEMY.aggro)) e.aggro = true;
       if (e.boss && e.home.distanceTo(player.position) > 170) { e.aggro = false; e.hp = Math.min(e.maxHp, e.hp + dt * 120); }
       e.stagger = Math.max(0, e.stagger - dt);
       let move = new THREE.Vector3();
@@ -244,7 +247,9 @@ export class Combat {
         }
       }
       e.charge = Math.max(0, e.charge - dt);
+      const from = _p.copy(e.position);
       e.position.addScaledVector(move, dt);
+      if (ctx.sanctuary(e.position) && !ctx.sanctuary(from)) e.position.copy(from); // never step into the site
       const dir = _w.copy(e.position).sub(planet.center).normalize();
       const ground = planet.shape.surfaceRadius(dir.x, dir.y, dir.z);
       const hover = e.flying ? 2.2 + Math.sin(time * 1.6 + e.phase) * 0.5 : 0;
@@ -272,7 +277,7 @@ export class Combat {
           } else { this.fireEnemy(origin, aim); e.shootTimer = 2.2 + Math.random() * 1.6; }
         }
       }
-      if (ctx.onFoot && dist < e.radius + 1.2 && !ctx.invulnerable) ctx.playerHit(dt * (e.boss ? 40 : ENEMY.contact), e.center);
+      if (ctx.onFoot && !safe && dist < e.radius + 1.2 && !ctx.invulnerable) ctx.playerHit(dt * (e.boss ? 40 : ENEMY.contact), e.center);
       // Telegraph glow.
       for (const m of e.mesh.userData.materials || []) if (m.emissive && m.userData.baseEmissive === undefined) m.userData.baseEmissive = m.emissiveIntensity;
       for (const m of e.mesh.userData.materials || []) if (m.userData.baseEmissive !== undefined) m.emissiveIntensity = m.userData.baseEmissive * (1 + e.telegraph * 2.5);
@@ -285,11 +290,13 @@ export class Combat {
       p.life -= dt;
       let hit = false, hitPoint = null;
       if (p.hostile) {
-        if (ctx.onFoot) {
+        if (ctx.onFoot && !safe) {
           const c = player.position.clone().addScaledVector(player.up, 1.0);
           const t = segmentSphereHitTime(start, end, c, 0.75);
           if (t !== null) { hit = true; hitPoint = start.clone().lerp(end, t); if (!ctx.invulnerable) ctx.playerHit(p.damage, hitPoint); }
         }
+        // Hostile bolts fizzle at the sanctuary's edge.
+        if (!hit && planet && ctx.sanctuary(end)) { hit = true; hitPoint = end; this.fx.sparks(end, '#ffb08a', 5, 4); }
       } else {
         let best = null, bestT = 1;
         for (const e of this.enemies) { const t = segmentSphereHitTime(start, end, e.center, e.radius); if (t !== null && t < bestT) { bestT = t; best = e; } }

@@ -14,7 +14,6 @@ import { runTask } from './terrain-worker.js';
 export class TerrainWorkerPool {
   constructor(specs, { size = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 4) - 1)), shapes = null } = {}) {
     this.queue = [];
-    this.callbacks = new Map();
     this.nextId = 1;
     this.workers = [];
     this.shapes = shapes;
@@ -23,9 +22,9 @@ export class TerrainWorkerPool {
     try {
       for (let i = 0; i < size; i++) {
         const worker = new Worker(new URL('./terrain-worker.js', import.meta.url), { type: 'module' });
-        const slot = { worker, busy: 0, ready: false, failed: false };
+        const slot = { worker, inflight: new Map(), ready: false, failed: false };
         worker.onmessage = event => this.#onMessage(slot, event.data);
-        worker.onerror = () => { slot.failed = true; };
+        worker.onerror = () => this.#fail(slot);
         worker.postMessage({ type: 'init', specs });
         this.workers.push(slot);
       }
@@ -35,11 +34,19 @@ export class TerrainWorkerPool {
   }
   #onMessage(slot, message) {
     if (message.type === 'ready') { slot.ready = true; this.pump(); return; }
-    slot.busy = Math.max(0, slot.busy - 1);
-    const callback = this.callbacks.get(message.id);
-    this.callbacks.delete(message.id);
-    if (message.type === 'result') { this.stats.built++; callback?.(message.result); }
-    else if (message.type === 'error') { console.warn('world worker:', message.error); callback?.(null); }
+    const ticket = slot.inflight.get(message.id);
+    slot.inflight.delete(message.id);
+    if (message.type === 'result') { this.stats.built++; ticket?.callback(message.result); }
+    else if (message.type === 'error') { console.warn('world worker:', message.error); ticket?.callback(null); }
+    this.pump();
+  }
+  /** A crashed worker hands its unfinished tasks back to the queue (another worker or the main thread takes them). */
+  #fail(slot) {
+    if (slot.failed) return;
+    slot.failed = true;
+    slot.worker.terminate();
+    this.queue.push(...slot.inflight.values());
+    slot.inflight.clear();
     this.pump();
   }
   /** Shares per-planet flora context with every worker (and the fallback). */
@@ -61,10 +68,9 @@ export class TerrainWorkerPool {
     this.queue.sort((a, b) => a.priority - b.priority);
     const live = this.workers.filter(w => w.ready && !w.failed);
     for (const slot of live) {
-      while (slot.busy < 2 && this.queue.length) {
+      while (slot.inflight.size < 2 && this.queue.length) {
         const ticket = this.queue.shift();
-        this.callbacks.set(ticket.id, ticket.callback);
-        slot.busy++;
+        slot.inflight.set(ticket.id, ticket);
         slot.worker.postMessage({ type: 'task', id: ticket.id, task: ticket.task });
       }
     }
@@ -79,7 +85,7 @@ export class TerrainWorkerPool {
       }
     }
   }
-  dispose() { for (const w of this.workers) w.worker.terminate(); this.workers = []; this.queue = []; this.callbacks.clear(); }
+  dispose() { for (const w of this.workers) w.worker.terminate(); this.workers = []; this.queue = []; }
 }
 
 let sharedIndex = null;

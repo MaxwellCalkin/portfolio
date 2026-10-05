@@ -109,7 +109,7 @@ export class Landmarks {
       } else if (/^LABEL_/.test(name)) {
         world.labels.push({ name, landmark: item.id, position: o.getWorldPosition(new THREE.Vector3()) });
       } else if (/^SPAWN_/.test(name)) {
-        world.spawns.push({ name, landmark: item.id, position: o.getWorldPosition(new THREE.Vector3()) });
+        world.spawns.push({ name, landmark: item.id, position: o.getWorldPosition(new THREE.Vector3()), up: item.up });
       } else if (/^ANIM_/.test(name)) {
         const kind = name.split('_')[1];
         world.anims.push({ object: o, kind, base: o.position.clone(), baseQuat: o.quaternion.clone(), phase: Math.random() * 6.28, materials: kind === 'PULSE' ? collectGlow(o) : null });

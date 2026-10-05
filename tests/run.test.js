@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Run, CRYSTALS } from '../game/gameplay/run.js';
+import { Run, CRYSTALS, MAX_DURATION } from '../game/gameplay/run.js';
 import { validateRun } from '../netlify/functions/_shared/leaderboard-core.js';
 import { levelForXP } from '../game/model.js';
 
@@ -35,4 +35,21 @@ test('paused time does not count toward the run duration', () => {
   const now = clock(), run = new Run(now);
   now.advance(10); run.pause(true); now.advance(100); run.pause(false); now.advance(5);
   assert.equal(run.duration, 15);
+});
+
+test('an open panel and a hidden tab pause the clock together, without double counting', () => {
+  const now = clock(), run = new Run(now);
+  now.advance(10); run.pause(true); now.advance(20); run.pause(true, 'hidden'); now.advance(30);
+  run.pause(false); now.advance(40);
+  assert.equal(run.duration, 10, 'still paused while the tab is hidden');
+  run.pause(false, 'hidden'); now.advance(5);
+  assert.equal(run.duration, 15);
+});
+
+test('a run left open for days can still be published', () => {
+  const now = clock(), run = new Run(now);
+  run.reward('philosophy:origin', 'archive'); now.advance(3 * MAX_DURATION);
+  const record = run.record('Tester');
+  assert.equal(record.duration, MAX_DURATION);
+  assert.doesNotThrow(() => validateRun({ name: record.name, score: record.score, kills: record.kills, level: record.level, xp: record.xp, duration: record.duration, bossKills: record.bossKills }));
 });

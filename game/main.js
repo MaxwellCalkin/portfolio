@@ -55,6 +55,8 @@ document.body.classList.toggle('reduce-motion', settings.reducedMotion);
 settings.onChange(() => document.body.classList.toggle('reduce-motion', settings.reducedMotion));
 
 // ---- flight log
+// Time spent in a hidden tab is not play time.
+document.addEventListener('visibilitychange', () => run.pause(document.hidden, 'hidden'));
 async function saveRun(name) {
   if (board.loading) return;
   const signature = `${run.score}:${run.kills}:${run.xp}`;

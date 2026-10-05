@@ -10,6 +10,8 @@ import { levelForXP, weaponForXP } from '../model.js';
  * discoveries, resonance shards and the Experience mini-games.
  */
 export const CRYSTALS = Object.freeze({ discovery: 6, archive: 10, shard: 4, arena: 12, groove: 6, world: 5 });
+/** The flight log accepts runs of up to a day (leaderboard-core.js validateRun). */
+export const MAX_DURATION = 86_400;
 
 export class Run {
   constructor(now = () => performance.now()) {
@@ -18,7 +20,7 @@ export class Run {
   }
   reset() {
     this.kills = 0; this.wardens = 0; this.crystals = 0;
-    this.startedAt = this.now(); this.pausedFor = 0; this.pauseStart = null;
+    this.startedAt = this.now(); this.pausedFor = 0; this.pauseStart = null; this.holds = new Set();
     this.read = new Set(); this.rewarded = new Set();
   }
   get xp() { return this.kills * 40 + this.wardens * 160 + this.crystals * 5; }
@@ -30,9 +32,12 @@ export class Run {
     const paused = this.pausedFor + (this.pauseStart !== null ? this.now() - this.pauseStart : 0);
     return Math.max(0, Math.floor((this.now() - this.startedAt - paused) / 1000));
   }
-  pause(on) {
-    if (on && this.pauseStart === null) this.pauseStart = this.now();
-    else if (!on && this.pauseStart !== null) { this.pausedFor += this.now() - this.pauseStart; this.pauseStart = null; }
+  /** The clock stops while any reason holds it (an open panel, a hidden tab). */
+  pause(on, reason = 'menu') {
+    const was = this.holds.size > 0;
+    if (on) this.holds.add(reason); else this.holds.delete(reason);
+    if (!was && this.holds.size) this.pauseStart = this.now();
+    else if (was && !this.holds.size) { this.pausedFor += this.now() - this.pauseStart; this.pauseStart = null; }
   }
   /** Adds crystals once per key (so re-reading a landmark never farms points). */
   reward(key, kind) {
@@ -45,6 +50,6 @@ export class Run {
   kill(warden = false) { this.kills++; if (warden) this.wardens = Math.min(5, this.wardens + 1); }
   /** The public fields for the flight log. */
   record(name) {
-    return { name, score: this.score, kills: this.kills, level: this.level, xp: this.xp, duration: this.duration, bossKills: this.wardens, date: new Date().toISOString() };
+    return { name, score: this.score, kills: this.kills, level: this.level, xp: this.xp, duration: Math.min(MAX_DURATION, this.duration), bossKills: this.wardens, date: new Date().toISOString() };
   }
 }

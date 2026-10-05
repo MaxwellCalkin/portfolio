@@ -60,9 +60,21 @@ export const DISCOVERIES = [
 export const WORLD_ORDER = ['philosophy', 'experience', 'projects', 'mission', 'contact'];
 export const CHAPTERS = Object.fromEntries(WORLD_ORDER.map(id => [id, CONTENT[id]]));
 
-export function discoveriesFor(world) { return DISCOVERIES.filter(d => d.world === world); }
+// The HUD looks these up every frame, so they are built once (shared and frozen).
+const byWorld = new Map(), byLandmark = new Map(), NONE = Object.freeze([]);
+for (const d of DISCOVERIES) {
+  for (const [map, key] of [[byWorld, d.world], [byLandmark, `${d.world}/${d.landmark}`]]) {
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(d);
+  }
+}
+for (const map of [byWorld, byLandmark]) for (const list of map.values()) Object.freeze(list);
+
+export function discoveriesFor(world) { return byWorld.get(world) || NONE; }
+/** The discoveries at one landmark of a world. */
+export function discoveriesAt(world, landmark) { return byLandmark.get(`${world}/${landmark}`) || NONE; }
 export function discoveryFor(world, landmark, poi) {
-  const list = DISCOVERIES.filter(d => d.world === world && d.landmark === landmark);
+  const list = discoveriesAt(world, landmark);
   return list.find(d => d.poi === poi) || list.find(d => !d.poi) || list[0] || null;
 }
 

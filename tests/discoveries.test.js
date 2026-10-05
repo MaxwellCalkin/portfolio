@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DISCOVERIES, WORLD_ORDER, Journal, discoveriesFor, discoveryFor } from '../game/gameplay/discoveries.js';
+import { DISCOVERIES, WORLD_ORDER, Journal, discoveriesAt, discoveriesFor, discoveryFor } from '../game/gameplay/discoveries.js';
 import { CONTENT, PROJECTS, ESSAYS } from '../game/content.js';
 import { LAYOUTS } from '../game/world/layout.js';
 
@@ -26,6 +26,13 @@ test('thirty-seven unique discoveries across five worlds, one main archive each'
     assert.equal(list.filter(d => d.kind === 'archive').length, 1);
     assert.equal(list.find(d => d.kind === 'archive').panel, world);
   }
+});
+
+test('the cached world and landmark lookups match the discovery list', () => {
+  for (const world of WORLD_ORDER) assert.deepEqual([...discoveriesFor(world)], DISCOVERIES.filter(d => d.world === world));
+  for (const d of DISCOVERIES) assert.deepEqual([...discoveriesAt(d.world, d.landmark)], DISCOVERIES.filter(x => x.world === d.world && x.landmark === d.landmark));
+  assert.equal(discoveriesAt('philosophy', 'nowhere').length, 0);
+  assert.throws(() => discoveriesFor('philosophy').push({}), TypeError, 'shared lists are read-only');
 });
 
 test('every discovery quotes the existing portfolio copy verbatim', () => {

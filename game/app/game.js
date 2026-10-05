@@ -15,7 +15,7 @@ import { FX } from '../gameplay/fx.js';
 import { Combat, ABILITIES, makeSanctuary } from '../gameplay/combat.js';
 import { Shards, SHARDS_PER_WORLD } from '../gameplay/shards.js';
 import { Challenges } from '../gameplay/challenges.js';
-import { DISCOVERIES, discoveriesFor, WORLD_ORDER } from '../gameplay/discoveries.js';
+import { DISCOVERIES, discoveriesAt, discoveriesFor, WORLD_ORDER } from '../gameplay/discoveries.js';
 import { Soundscape } from '../audio/soundscape.js';
 import { createProjectStars, PROJECT_LANDMARKS } from '../project-stars.js';
 import { applyDamage } from '../model.js';
@@ -316,6 +316,7 @@ export class Game {
     this.agent.root.visible = true;
     this.rig.lookAlong(this.player.up, site.spawn.forward, -0.1);
     this.combat.clear();
+    this.challenges.cancelArena();
     this.hud.hideCard(); this.card = null;
     Object.assign(this.state, { health: 100, shield: 100, dead: false, invuln: 2.5 });
     if (!intro) { this.mode = 'foot'; this.rig.setMode('foot', 0.01); this.rig.blend = 1; this.#snapFootCamera(); }
@@ -352,7 +353,7 @@ export class Game {
   #buildLabels(worldId) {
     const world = this.landmarks.worlds.get(worldId); if (!world || world.labelInfo) return;
     world.labelInfo = world.labels.map(label => {
-      const list = discoveriesFor(worldId).filter(d => d.landmark === label.landmark);
+      const list = discoveriesAt(worldId, label.landmark);
       if (/^LABEL_glyph_(\d)/.test(label.name)) {
         const tools = DISCOVERIES.find(d => d.id === 'experience:tools');
         return { ...label, title: tools.list[Number(label.name.slice(-1))] || '', sub: '', ids: [tools.id], small: true };
@@ -469,7 +470,7 @@ export class Game {
     this.agent.update(dt, { localVel: p.localVel, grounded: p.grounded, jetpack: p.jetting, sprint: p.sprinting, aiming, firing: stance, pitch: this.rig.pitch, emote: s.emote, firedThisFrame: fired });
     // Card closes when the visitor walks away.
     if (this.card && this.card.poi.position.distanceTo(p.position) > 9) { this.hud.hideCard(); this.card = null; }
-    this.challenges.updatePads(this.landmarks.worlds.get(this.worldId), p, dt);
+    this.challenges.updatePads(this.landmarks.worlds.get(this.worldId), p);
   }
 
   #refreshFloraColliders() {
@@ -643,6 +644,7 @@ export class Game {
     this.ship.takeoff(up);
     this.sound.play('shipBoard'); this.sound.play('takeoff');
     this.combat.clear();
+    this.challenges.cancelArena();
   }
 
   #disembark() {
@@ -866,6 +868,7 @@ export class Game {
     this.sound.play('shieldBreak');
     document.body.classList.add('is-fading');
     this.hud.hideCard(); this.card = null;
+    this.challenges.cancelArena();
   }
   #updateDead(dt) {
     const s = this.state;
@@ -961,10 +964,12 @@ export class Game {
     const markers = [], labels = [];
     const bearing = target => { const d = _v.copy(target).sub(eye); return Math.atan2(d.dot(right), d.dot(forward)); };
     const world = this.landmarks.worlds.get(this.worldId);
-    const objective = this.#objective(world);
+    // The objective changes slowly: markers reuse the last one between HUD ticks.
+    if (slow || !this.currentObjective) this.currentObjective = this.#objective(world);
+    const objective = this.currentObjective;
     if (onFoot && world) {
       for (const item of world.items) {
-        const list = discoveriesFor(this.worldId).filter(d => d.landmark === item.id);
+        const list = discoveriesAt(this.worldId, item.id);
         if (!list.length || list.every(d => this.journal.has(d.id))) continue;
         markers.push({ id: `lm:${item.id}`, bearing: bearing(item.position), kind: 'poi', main: objective.target === item, distance: item.position.distanceTo(eye), label: objective.target === item ? objective.short : '' });
       }
