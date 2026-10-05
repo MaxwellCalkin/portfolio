@@ -11,10 +11,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./game/game.css">
+  <link rel="stylesheet" href="./game/hud.css">
 </head>
 <body>
   <a class="skip-link" href="./portfolio.html">Skip the game. Read the portfolio.</a>
-  <canvas id="game-canvas" tabindex="0" aria-label="Playable space exploration. In the ship, W is forward thrust, S is reverse thrust, X brakes, and C descends gently near a planet. Steer with arrows or a drag. Fly directly to a world and land low and slow. Press E near the BEACN sun to open its project, or once landed to exit the ship. On foot, use WASD to move and the mouse to aim. Press M for a destination map, Escape to release the mouse, or use the portfolio links above."></canvas>
+  <canvas id="game-canvas" tabindex="0" aria-label="A playable third-person exploration game. Walk with W A S D, look with the mouse, jump and jetpack with Space, sprint with Shift, and press E to read the landmarks. Every section is also available from the portfolio links above."></canvas>
   <div class="scene-vignette" aria-hidden="true"></div>
   <div class="film-grain" aria-hidden="true"></div>
   <div class="hud-shell" id="hud-shell">
@@ -39,33 +40,79 @@
         <p class="launch-dek">A mind to explore.<br>A better world to build.</p>
         <p class="launch-subtitle">Software engineer. Alignment-minded builder.<br>In service of what is genuinely life-giving.</p>
         <div class="featured-projects"><span>FEATURED PROJECTS</span><a href="https://beacn.space" target="_blank" rel="noopener noreferrer">BEACN <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a><a href="https://heard-us.vercel.app" target="_blank" rel="noopener noreferrer">Heard Us <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a></div><div class="launch-actions"><button class="button button-primary" id="launch-button" disabled><span id="launch-button-text">Initializing universe</span><span class="button-orbit" aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><a class="read-link" href="./portfolio.html">Read the portfolio <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a></div>
-        <p class="launch-note" id="launch-note">Five worlds. One journey. Go at your own pace.</p>
+        <p class="launch-note" id="launch-note">Five worlds. Thirty-seven discoveries. Static rifts and a slipstream circuit in the space between. Go at your own pace.</p>
       </div>
     </main>
 
-    <aside class="world-callout" id="world-callout" aria-hidden="true"><span class="callout-cross">+</span><span class="tiny">02 — EXPERIENCE</span><span class="callout-title">Every chapter compounds.</span><span class="callout-line"></span></aside>
-
-    <div class="flight-top in-game" id="flight-top">
-      <div class="objective"><span class="tiny">YOUR NEXT HORIZON</span><strong id="objective-title">Explore the five worlds</strong><span id="objective-detail">Fly toward a world. Follow its approach signal.</span><span class="shrine-guide" id="shrine-guide" hidden><svg id="shrine-bearing" viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 5 11-5-3-5 3 5-11Z"/></svg><span id="shrine-name">Nearest archive</span><span id="shrine-distance"></span></span></div>
-      <div class="run-stats"><span><small>LEVEL</small><b id="level-value">01</b></span><span><small>SCORE</small><b id="score-value">000000</b></span><button data-panel="scores" aria-label="Open this device's flight records"><span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span> FLIGHT LOG</button></div>
+    <div class="u-hud" id="u-hud" aria-hidden="true">
+      <div class="u-compass" id="u-compass"><div class="u-compass-track" id="u-compass-track"></div><span class="u-compass-center"></span></div>
+      <section class="u-objective" id="u-objective">
+        <span class="u-world" id="u-world"><i id="u-world-dot"></i><span id="u-world-name">01 · PHILOSOPHY</span></span>
+        <strong id="u-objective-title">Read The Origin</strong>
+        <span id="u-objective-detail">Follow the path to the monument ahead.</span>
+        <span class="u-progress"><span id="u-progress-discoveries">0 / 9 discoveries</span><span id="u-progress-shards">0 / 10 shards</span></span>
+      </section>
+      <section class="u-boss" id="u-boss" hidden><span class="tiny">WORLD WARDEN</span><strong id="u-boss-name">Warden</strong><span class="u-boss-track"><i id="u-boss-fill"></i></span></section>
+      <div class="u-crosshair" id="u-crosshair"><i></i><i></i><i></i><i></i><b id="u-hitmarker"></b></div>
+      <div class="u-prompt" id="u-prompt" hidden><kbd id="u-prompt-key">E</kbd><span id="u-prompt-text">Read</span></div>
+      <section class="u-vitals" id="u-vitals">
+        <span class="u-agent"><b>MAX</b> // AGENT</span>
+        <span class="u-bar u-health"><i id="u-health"></i><small id="u-health-value">100</small></span>
+        <span class="u-bar u-shield"><i id="u-shield"></i></span>
+        <span class="u-bar u-jet"><i id="u-jet"></i><small>JET</small></span>
+      </section>
+      <section class="u-flight" id="u-flight" hidden>
+        <span class="tiny" id="u-flight-mode">ATMOSPHERE</span>
+        <strong><span id="u-speed">0</span><small>M/S</small></strong>
+        <span class="u-altitude"><small>ALT</small><span id="u-altitude">0 M</span></span>
+      </section>
+      <section class="u-abilities" id="u-abilities">
+        <div class="u-ability" data-ability="dash"><kbd>Q</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M4 12h11M11 6l6 6-6 6M19 5v14"/></svg></span><small>Glissando</small><i class="u-cooldown"></i></div>
+        <div class="u-ability" data-ability="pulse"><kbd>C</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M6.5 7.5a7.5 7.5 0 0 0 0 9M17.5 7.5a7.5 7.5 0 0 1 0 9M3.5 4.5a12 12 0 0 0 0 15M20.5 4.5a12 12 0 0 1 0 15"/></svg></span><small>Low End</small><i class="u-cooldown"></i></div>
+        <div class="u-ability u-ultimate" data-ability="drop"><kbd>X</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></span><small>The Drop</small><i class="u-charge" id="u-ult-charge"></i><b id="u-ult-value">0%</b></div>
+        <div class="u-weapon"><small>RIFLE</small><strong id="u-weapon">PULSE I</strong></div>
+      </section>
+      <div class="u-targets" id="u-targets"></div>
+      <div class="u-aim" id="u-aim" hidden><i></i><b id="u-lead" hidden></b></div>
+      <span class="u-tone" id="u-tone" title="Tone engages the Aster's pedals (press U)"><b id="u-tone-value">0</b> TONE <i id="u-tone-delta"></i></span>
+      <section class="u-race" id="u-race" hidden><span class="tiny" id="u-race-label">SLIPSTREAM CIRCUIT</span><strong id="u-race-time">0.0s</strong><span id="u-race-detail">GATE 1 / 16</span></section>
+      <div class="u-streak" id="u-streak" hidden><strong id="u-streak-count">×2</strong><span id="u-streak-label">DOUBLE STOP</span></div>
+      <section class="u-banner" id="u-banner" hidden><span class="tiny" id="u-banner-eyebrow"></span><strong id="u-banner-title"></strong><span id="u-banner-sub"></span></section>
+      <section class="u-shipbar" id="u-shipbar" hidden>
+        <span class="u-agent"><b>THE ASTER</b> // <span id="u-ship-weapon">CANNONS</span></span>
+        <span class="u-bar u-health"><i id="u-hull"></i><small id="u-hull-value">100</small></span>
+        <span class="u-bar u-shield"><i id="u-ship-shield"></i></span>
+        <div class="u-ship-moves">
+          <div class="u-ability" data-ship="missiles"><kbd>RMB</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M5 19 17 7M12 7h5v5M4 14l6 6"/></svg></span><small>Harmonics</small><i class="u-cooldown"></i></div>
+          <div class="u-ability" data-ship="roll"><kbd>Q</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></span><small>Roll</small><i class="u-cooldown"></i></div>
+          <div class="u-ability u-ultimate" data-ship="nova"><kbd>X</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></span><small>The Drop</small><i class="u-charge"></i></div>
+        </div>
+      </section>
+      <aside class="u-card" id="u-card" hidden aria-live="polite">
+        <span class="tiny" id="u-card-eyebrow">DISCOVERY</span>
+        <h2 id="u-card-title"></h2>
+        <p id="u-card-text"></p>
+        <ol id="u-card-list" hidden></ol>
+        <p class="u-card-hint" id="u-card-hint" hidden></p>
+        <div class="u-card-actions" id="u-card-actions"></div>
+        <span class="u-card-count" id="u-card-count"></span>
+      </aside>
+      <div class="u-toasts" id="u-toasts" role="status" aria-live="polite"></div>
+      <div class="u-labels" id="u-labels"></div>
+      <div class="u-popups" id="u-popups"></div>
+      <div class="u-controls" id="u-controls"><span><kbd>WASD</kbd> move</span><span><kbd>SPACE</kbd> jump · hold to jetpack</span><span><kbd>SHIFT</kbd> sprint</span><span><kbd>E</kbd> interact</span><span><kbd>M</kbd> map</span><span><kbd>J</kbd> journal</span></div>
+      <div class="u-touch" id="u-touch" hidden>
+        <div class="u-stick" id="u-stick"><i></i></div>
+        <div class="u-touch-buttons">
+          <button data-touch="fire" aria-label="Fire">FIRE</button><button data-touch="jump" aria-label="Jump or jetpack">JUMP</button>
+          <button data-touch="interact" aria-label="Interact">E</button><button data-touch="ability1" aria-label="Glissando dash">Q</button>
+          <button data-touch="ability2" aria-label="Low End pulse">C</button><button data-touch="ultimate" aria-label="The Drop">X</button>
+          <button data-touch="sprint" aria-label="Sprint">RUN</button><button data-touch="map" aria-label="Map">MAP</button>
+        </div>
+      </div>
     </div>
-    <section class="boss-status in-game" id="boss-status" aria-label="World warden" hidden><div class="boss-heading"><span class="tiny">WORLD WARDEN</span><strong id="boss-name"></strong><span id="boss-health-value"></span></div><div class="boss-health-track" id="boss-health-track" role="progressbar" aria-label="Warden health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="boss-health-fill"></i></div></section>
-    <div class="crosshair in-game" id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>
-    <div class="shrine-marker in-game" id="shrine-marker" aria-hidden="true" hidden><span></span></div>
-    <div class="target-label in-game" id="target-label" aria-live="off"></div>
-    <div class="interaction in-game" id="interaction" hidden><button id="interact-button"><kbd>E</kbd><span id="interact-label">Interact</span><span aria-hidden="true">↓</span></button></div>
-
-    <footer class="bottom-chrome">
-      <div class="intro-footer" id="intro-footer"><span class="tiny">HEALTH / FAMILY / MISSION</span><div class="footer-rule"></div><p>For the widening and deepening<br>of what is genuinely life-giving.</p><span class="coordinates">MC–01 <span>·</span> EST. EARTH</span></div>
-      <div class="vitals in-game"><div class="ship-status"><span class="status-dot"></span><span id="mode-label">ORBITAL EXPLORER</span><span id="speed-value">000 <small>M/S</small></span></div><div class="flight-telemetry" id="flight-telemetry"><span id="altitude-label">DEEP SPACE</span><span id="flight-activity">0 RINGS</span></div><div class="meter-row"><span id="health-label">HULL</span><div class="meter"><i id="health-fill"></i></div><b id="health-value">100</b></div><div class="meter-row shield"><span>SHIELD</span><div class="meter"><i id="shield-fill"></i></div><b id="shield-value">100</b></div><div class="xp-row"><span id="xp-label">EXPLORER 01</span><div><i id="xp-fill"></i></div></div><button class="warden-progress" id="warden-progress" data-panel="achievement" aria-label="View world warden progress"><span class="warden-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span id="warden-count">0 / 5 WARDENS</span><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></button></div>
-      <div class="abilities in-game"><button id="dash-button" class="ability" data-command="dash"><span class="ability-glyph" aria-hidden="true">»</span><strong id="dash-name">BOOST</strong><span class="ability-state" id="dash-state">READY</span><kbd>SHIFT</kbd></button><button class="ability" id="recall-button" data-command="recall"><span class="ability-glyph" aria-hidden="true">↶</span><strong id="recall-name">EVASIVE LOOP</strong><span class="ability-state" id="recall-state">SET ANCHOR</span><kbd>Q</kbd></button><button class="ability ultimate" id="ultimate-button" data-command="ultimate"><span class="ultimate-track"><i id="ultimate-fill"></i></span><span class="ability-glyph" aria-hidden="true">✧</span><strong>SINGULARITY</strong><span class="ability-state" id="ultimate-state">0%</span><kbd>R</kbd></button></div>
-      <aside class="minimap-wrap" aria-label="Interactive star system map"><div class="map-heading"><span class="tiny">THE LOCAL SYSTEM</span><button data-panel="map" aria-label="Expand system map"><kbd>M</kbd> <svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></button></div><div class="minimap" id="minimap"><div class="map-orbit map-orbit-one"></div><div class="map-orbit map-orbit-two"></div><div class="map-axis horizontal"></div><div class="map-axis vertical"></div><a class="map-beacn" href="https://beacn.space" target="_blank" rel="noopener noreferrer" aria-label="Visit BEACN, the central sun project" title="BEACN · Collective alignment experiment"><span class="map-sun" aria-hidden="true"></span><span class="map-beacn-label">BEACN</span></a><span class="map-player" id="map-player" aria-label="Your position">⌃</span></div><div class="map-footer"><span><i class="mini-dot"></i> YOU ARE HERE</span><span id="visited-count">0 / 5 WORLDS</span></div></aside>
-    </footer>
-    <div class="controls-strip in-game"><span><kbd>W</kbd> FORWARD <kbd>S</kbd> REVERSE</span><span><kbd>↑↓←→</kbd> STEER</span><span><kbd>SPACE</kbd> FIRE</span><span id="context-control"><kbd>X</kbd> BRAKE <kbd>C</kbd> DESCEND</span><button data-panel="controls">ALL CONTROLS <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button></div>
-    <div class="launch-bottom"><span class="tiny">AN INTERACTIVE PORTFOLIO</span><span class="tiny">BUILT TO BE EXPLORED <span aria-hidden="true">✧</span></span></div>
-    <div class="touch-controls in-game" aria-label="Touch controls"><div class="touch-dpad"><button class="touch-key touch-up" data-input="KeyW" aria-label="Forward thrust, W">↑<span>FORWARD</span></button><button class="touch-key touch-left" data-input="KeyA" aria-label="Move left">←</button><button class="touch-key touch-down" data-input="KeyS" aria-label="Reverse thrust, S">↓<span>BACK</span></button><button class="touch-key touch-right" data-input="KeyD" aria-label="Move right">→</button></div><div class="touch-flight" id="touch-flight" aria-label="Ship brake and descent"><button class="touch-key" data-input="KeyX" aria-label="Brake to a stop, X">X<span>BRAKE</span></button><button class="touch-key" data-input="KeyC" aria-label="Descend gently toward a planet, C">C<span>DESCEND</span></button></div><div class="touch-actions"><button class="touch-key touch-fire" data-fire aria-label="Fire pulse weapon">◎</button><button class="touch-key" data-command="dash" aria-label="Boost or dash">»</button><button class="touch-key" data-command="interact" aria-label="Open BEACN, board or exit ship, or open archive">E</button></div></div>
   </div>
-  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="u-fade" id="u-fade" aria-hidden="true"></div>
   <dialog class="portfolio-dialog" id="portfolio-dialog" aria-labelledby="dialog-title"><div class="dialog-topline"><span class="tiny" id="dialog-eyebrow">TRANSMISSION</span><button class="button button-primary death-restart" id="death-restart" data-command="restart" type="button" hidden>Restart expedition <svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></button><button class="close-dialog" id="close-dialog" aria-label="Close panel"><kbd>ESC</kbd><span aria-hidden="true">×</span></button></div><div class="dialog-content" id="dialog-content"></div><footer class="dialog-footer"><span class="tiny">MAXWELL CALKIN / THE UNFOLDING</span><a href="./portfolio.html">Read the complete portfolio <svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></a></footer></dialog>
   <noscript><div class="no-script"><h1>The Unfolding — Maxwell Calkin</h1><p>The space experience needs JavaScript. The complete portfolio and essays are available without it.</p><a class="button button-primary" href="./portfolio.html">Read the portfolio <svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></a></div></noscript>
   <script type="module" src="./game/main.js"></script>

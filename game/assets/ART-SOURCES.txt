@@ -24,8 +24,18 @@ heard-typeface.json is a glyph-only subset of the Three.js bundled Droid Serif.
 Copyright (c) 2005–2008 The Android Open Source Project; Apache License 2.0.
 Complete copyright notice and license are in DROID-FONT-LICENSE.txt.
 
-KESTREL / 07
-Original heroic explorer modeled directly with custom lofted, beveled and wrapped
-profile geometry in game/hero-explorer.js. Athletic armor, tailored fieldcoat,
-scarf, helmet and pulse rifle are original designs. The articulated rig includes
-hips, knees, ankles and two-bone arm IK. No third-party character asset is used.
+THE AGENT, THE ASTER, FLORA AND LANDMARKS
+Original models generated procedurally with Blender 5 from the scripts in
+art/blender/ (agent.py, ship.py, flora.py, landmarks_a.py, landmarks_b.py) and
+optimized with gltfpack into public/models/. The agent is an original
+hero-shooter style character ("MAX // AGENT"): no existing game character,
+costume or silhouette is reproduced. No third-party models, textures or
+motion capture are used; all animation is keyframed in the scripts.
+
+CREATURES
+Sentinels and the five world wardens remain original procedural geometry in
+game/creatures.js.
+
+AUDIO
+All music and sound effects are synthesized live with the Web Audio API
+(game/audio/). No samples or recordings are used.
