@@ -60,6 +60,33 @@ test('the journal remembers discoveries across visits', async ({ page }) => {
   await expect(page.locator('.dialog-lede')).toContainText('2 of 37 discoveries');
 });
 
+test('deep space: silence a rift, earn Tone and engage a pedal', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(GAME);
+  await ready(page);
+  await page.locator('#launch-button').click();
+  await expect(page.locator('body')).toHaveClass(/is-playing/);
+  await page.evaluate(() => window.__unfolding.debug.space.toRift('hum', 600));
+  await expect(page.locator('#u-objective-title')).toContainText('The Hum', { timeout: 30000 });
+  await expect(page.locator('#u-shipbar')).toBeVisible();
+  // Down every wave as it arrives (the fighting itself is covered by the unit tests).
+  await page.waitForFunction(() => { const g = window.__unfolding; g.debug.space.killAll(); return g.journal.riftClears('hum') >= 1; }, null, { timeout: 90000, polling: 250 });
+  const tone = await page.evaluate(() => window.__unfolding.journal.data.tone);
+  expect(tone).toBeGreaterThanOrEqual(150);
+  await expect(page.locator('#u-tone-value')).toHaveText(tone.toLocaleString('en-US'));
+  await page.keyboard.press('u');
+  await expect(page.locator('#dialog-title')).toContainText('pedalboard');
+  await page.locator('[data-pedal=overdrive]').click();
+  await expect(page.locator('.pedal.is-on')).toHaveCount(1);
+  expect(await page.evaluate(() => window.__unfolding.journal.data.pedals.overdrive)).toBe(1);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('m');
+  await expect(page.locator('.map-section')).toHaveText('Deep space');
+  await expect(page.locator('[data-target=hum]').locator('..').locator('..')).toContainText('SILENCED');
+  expect(errors).toEqual([]);
+});
+
 test('portfolio stays readable with JavaScript disabled', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();

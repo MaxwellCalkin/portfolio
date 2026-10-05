@@ -10,22 +10,23 @@ import { MODES, PENTATONIC, clamp, finite, midiToHz } from './util.js';
 /** Voice limits, minimum retrigger intervals (s) and priorities per effect. */
 export const SFX_LIMITS = {
   fire: 6, hit: 6, hitmarker: 4, kill: 4, footstep: 3, pickup: 6, uiHover: 2, uiClick: 3, land: 2, jump: 2, dash: 3, hurt: 2, notePad: 4,
-  killBass: 3, discoverBass: 1, levelBass: 1, ultimate: 1, discover: 2,
+  killBass: 3, discoverBass: 1, levelBass: 1, ultimate: 1, discover: 2, boom: 5, missile: 3,
 };
 export const SFX_INTERVALS = {
   fire: 0.03, hit: 0.02, hitmarker: 0.025, kill: 0.03, footstep: 0.06, pickup: 0.03, uiHover: 0.04, uiClick: 0.02, hurt: 0.08,
   denied: 0.1, jump: 0.05, land: 0.08, dash: 0.08, gate: 0.1, ultimate: 0.5, discover: 0.5, shieldBreak: 0.2, pulse: 0.15,
   levelUp: 0.3, bossRoar: 0.4, warpStart: 0.3, warpEnd: 0.3, shipBoard: 0.3, shipLand: 0.3, takeoff: 0.3, archiveOpen: 0.2, notePad: 0.02,
+  boom: 0.04, missile: 0.08,
 };
 const PRIORITY = {
   ultimate: 9, discover: 8, bossRoar: 7, levelUp: 7, warpStart: 7, warpEnd: 7, kill: 6, hurt: 6, shieldBreak: 6, pulse: 6,
-  hit: 4, fire: 3, hitmarker: 3, footstep: 1, uiHover: 1,
+  boom: 5, hit: 4, missile: 4, fire: 3, hitmarker: 3, footstep: 1, uiHover: 1,
 };
 
 export const SFX_NAMES = [
   'fire', 'hit', 'hitmarker', 'kill', 'hurt', 'shieldBreak', 'dash', 'pulse', 'ultimate', 'jump', 'land', 'footstep',
   'discover', 'archiveOpen', 'uiClick', 'uiHover', 'warpStart', 'warpEnd', 'shipBoard', 'shipLand', 'takeoff', 'gate',
-  'bossRoar', 'levelUp', 'pickup', 'denied', 'notePad',
+  'bossRoar', 'levelUp', 'pickup', 'denied', 'notePad', 'boom', 'missile',
 ];
 
 /** Per-effect loudness calibration in dB (measured with K-weighted momentary loudness). */
@@ -547,6 +548,26 @@ export class SfxLibrary {
     this.ping(voice, { freq: midiToHz(base) * o.pitch, ratio: 3.5, index: 1, start: t + 0.03, decay: 0.9, level: 0.06, pan: -0.25 });
     this.ping(voice, { freq: midiToHz(base + 7) * o.pitch, ratio: 3.5, index: 1, start: t + 0.07, decay: 0.9, level: 0.055, pan: 0.25 });
     this.tone(voice, { freq: 600, to: 1200, sweep: 0.2, start: t, attack: 0.02, decay: 0.25, level: 0.05 });
+    return this.finish(voice);
+  }
+
+  /** Explosion in space: a sub thump, a falling roar of filtered noise and a crackle. */
+  sfx_boom(o, t) {
+    const voice = this.begin('boom', t, o, { large: 0.22 });
+    if (!voice) return null;
+    const p = o.pitch * this.rng.jitter(1, 0.06);
+    this.tone(voice, { freq: 120 * p, to: 32 * p, sweep: 0.35, start: t, attack: 0.002, decay: 0.7, level: 0.5 });
+    this.noise(voice, { color: 'pink', start: t, attack: 0.002, decay: 0.6, level: 0.32, type: 'lowpass', freq: 2400 * p, to: 240, sweep: 0.5 });
+    this.noise(voice, { start: t + 0.01, decay: 0.12, level: 0.12, type: 'bandpass', freq: 3200 * p, q: 0.7 });
+    return this.finish(voice);
+  }
+
+  /** Missile launch: a rising whoosh with a hint of tone. */
+  sfx_missile(o, t) {
+    const voice = this.begin('missile', t, o);
+    if (!voice) return null;
+    this.noise(voice, { color: 'pink', start: t, attack: 0.01, decay: 0.45, level: 0.3, type: 'bandpass', freq: 600 * o.pitch, to: 3200 * o.pitch, q: 1.2, sweep: 0.4 });
+    this.tone(voice, { type: 'triangle', freq: 300 * o.pitch, to: 900 * o.pitch, sweep: 0.3, start: t, attack: 0.01, decay: 0.3, level: 0.07 });
     return this.finish(voice);
   }
 

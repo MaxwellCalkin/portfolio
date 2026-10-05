@@ -9,7 +9,7 @@ Node.js 22.12+ or 24, then:
 ```sh
 npm ci
 npm run dev        # Vite on http://127.0.0.1:4173
-npm test           # unit tests (worlds, discoveries, physics, scoring, audio, leaderboard)
+npm test           # unit tests (worlds, discoveries, physics, space, scoring, audio, leaderboard)
 npm run build      # static multipage build to dist/
 npx playwright test  # browser tests (set CHROMIUM_PATH to use a system Chromium)
 ```
@@ -33,7 +33,21 @@ The Netlify function (shared flight log) runs on Netlify or with Netlify Dev. Pl
 | Air bass (unlocked by finding the groove on the Experience stage) | B |
 | Map, journal, controls, pause | M, J or Tab, H, Esc |
 
-**In the ship (the Aster)**: W / S throttle, mouse to steer, A / D to turn, Shift to boost (the pulse drive engages in open space), E to land (it finds flat ground, or the landing pad near a site), M for autopilot to any world. Takeoff and landing are automatic.
+**In the ship (the Aster)**
+
+| Action | Keys |
+|---|---|
+| Throttle / steer / turn | W S / mouse / A D |
+| Boost (the pulse drive engages in open space) | Shift |
+| Cannons | Left click |
+| Homing missiles (once the Harmonics pedal is engaged) | Right click or C |
+| Barrel roll (dodges fire) | Q |
+| The Drop: a shockwave around the ship | X |
+| Land (flat ground, or the pad near a site) | E |
+| The pedalboard (upgrades) | U |
+| Map: autopilot to a world, a rift or the circuit | M |
+
+Takeoff and landing are automatic.
 
 Touch devices get a virtual stick (left side), look drag (right side) and buttons. Graphics quality adapts to the device (and steps down automatically if the frame rate drops); it can be set in the pause menu along with sound, volume, look sensitivity, invert look and reduced motion.
 
@@ -48,6 +62,17 @@ Touch devices get a virtual stick (left side), look drag (right side) and button
 | 05 Contact, *the Signal* | golden dunes | the signal dish, four antennas (email, GitHub, LinkedIn, X), a closing monolith |
 
 Thirty-seven discoveries, ten resonance shards per world, and a warden beyond each site's sanctuary. Nothing hostile ever spawns at a site, and no content is gated behind combat. The journal (J) remembers what you found on this device. Defeating all five wardens earns the Starforged Explorer title and aurora thrusters. Scores can be saved to the flight log (local, or the shared Netlify board).
+
+## Deep space
+
+The space between the worlds is its own game, entirely optional:
+
+- **Static rifts.** Three tears in space (The Hum, The Crackle, The Dissonance), each inside an asteroid field. Fly into one and the Static pours through in waves: glitches that dive and jink, spikes that ram, jammers that circle and spray. The pulse drive is jammed inside the field; fly out to retreat, and if the Aster goes down you re-form at the edge and resume at the same wave. The third rift ends with the Dissonance, a carrier whose core hides behind four amps. Silenced rifts can be replayed as encores, louder each time.
+- **Slipstream gates.** Gold gates surge the Aster past its top speed. Sixteen of them weave around the BEACN monument as a timed circuit with bronze, silver and gold medals; five more leave every world toward the next, and threading all five fires a slingshot.
+- **Patrols.** Now and then a Static patrol finds you in open space (the pulse drive outruns it). They can be switched off in settings.
+- **The pedalboard.** Everything earns Tone: kills, streaks, waves, rifts, gates, laps and medals, and on the worlds, discoveries, shards and wardens. Tone engages the Aster's pedals: Overdrive (fire rate), Octaver (more bolts), Harmonics (homing missiles), Compressor (shields), Fuzz (boost, surges, ramming) and Delay (echo volleys). Reverb, which makes kills ring out and shatter nearby Static, is earned by silencing the Dissonance.
+
+Space kills, gates, laps and rifts count toward the flight log score within the existing server validation.
 
 ## Architecture
 
@@ -68,6 +93,8 @@ game/
     universe.js        ties the planets, sky and lighting together
   actors/              agent (skinned, layered animation), player controller, camera rig, ship, physics
   gameplay/            discoveries + journal, combat, shards, Experience challenges, effects, scoring
+  space/               deep space: rifts and waves (director), the Static and every projectile (fleet),
+                       slipstream gates and the circuit, rift and asteroid scenery, speed lines, the pedalboard
   ui/                  HUD and panels
   audio/               live-synthesized soundtrack and effects (no audio files)
   content.js           the portfolio copy (unchanged)

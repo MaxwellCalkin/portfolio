@@ -12,6 +12,13 @@ import { Player } from '../actors/player.js';
 import { CameraRig } from '../actors/camera-rig.js';
 import { Ship } from '../actors/ship.js';
 import { FX } from '../gameplay/fx.js';
+import { SpaceFleet, leadPoint } from '../space/fleet.js';
+import { SpaceDirector } from '../space/director.js';
+import { SpaceScenery } from '../space/scenery.js';
+import { Slipstream, RACE_LIMITS } from '../space/slipstream.js';
+import { SpeedLines } from '../space/speedlines.js';
+import { FIELD_RADIUS, RIFTS, riftById } from '../space/rifts.js';
+import { TONE, levelOf, loadout } from '../space/pedals.js';
 import { Combat, ABILITIES, makeSanctuary } from '../gameplay/combat.js';
 import { Shards, SHARDS_PER_WORLD } from '../gameplay/shards.js';
 import { Challenges } from '../gameplay/challenges.js';
@@ -30,6 +37,10 @@ import { formatDistance, formatTime } from '../ui/format.js';
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _u = new THREE.Vector3(), _p = new THREE.Vector3();
 const SURFACE = { philosophy: 'grass', experience: 'sand', projects: 'crystal', mission: 'grass', contact: 'sand' };
 const LAND_ALTITUDE = 1400;
+/** Inside a rift's field the Aster flies at dogfight speeds. */
+const FIELD_LIMITS = { max: 520, boost: 820 };
+const STREAK_CALLS = { 2: 'DOUBLE STOP', 3: 'TRIPLET', 5: 'IN THE POCKET', 8: 'SHREDDING', 12: 'STANDING OVATION' };
+const ROMAN = ['', 'I', 'II', 'III'];
 
 export class Game {
   constructor({ canvas, hud, panels, settings, journal, run, onProgress }) {
@@ -43,6 +54,9 @@ export class Game {
     this.card = null;
     this.floraCols = []; this.floraColsAt = new THREE.Vector3(Infinity, 0, 0);
     this.lairs = new Map();
+    // The Aster in deep space: hull and shields, missiles, combos, a respawn after going down.
+    this.aster = { hull: 100, shield: 100, lastHit: -99, invuln: 0, down: false, downTimer: 0, respawn: null, missileCd: 0, echoes: [], reverbs: [], nova: null, streak: 0, lastKill: -99, aim: null, lead: new THREE.Vector3(), slowmo: 0, rollSide: 1, inField: false };
+    this.shipPrev = new THREE.Vector3();
     this.perf = { frames: 0, time: 0, slow: 0, downgrades: 0 };
     const query = new URLSearchParams(location.search);
     this.forcedQuality = query.has('quality');
@@ -90,6 +104,30 @@ export class Game {
         return true;
       },
       enemies: () => this.combat.enemies.map(e => ({ boss: e.boss, hp: Math.round(e.hp), d: +e.center.distanceTo(this.player.position).toFixed(1) })),
+      space: {
+        /** Flies the Aster to just outside a rift's field, facing it. */
+        toRift: (id, inside = 0) => {
+          const rift = riftById(id); if (!rift) return null;
+          const center = new THREE.Vector3(...rift.position), from = center.clone().add(new THREE.Vector3(0.3, 0.2, 1).normalize().multiplyScalar(FIELD_RADIUS + 400 - inside));
+          this.#enterFlight(from, center.clone().sub(from));
+          return this.debug.space.state();
+        },
+        /** Puts the Aster just before a circuit gate (0 = the start line). */
+        toGate: (i = 0) => {
+          const gate = this.slipstream.circuit[i]; if (!gate) return null;
+          this.#enterFlight(gate.center.clone().addScaledVector(gate.normal, -700), gate.normal.clone(), 600);
+          return this.debug.space.state();
+        },
+        killAll: () => { for (const t of [...this.fleet.targets()]) this.fleet.damage(t.enemy, 1e6, t.position, { part: t.part }); return this.fleet.count(); },
+        state: () => {
+          const enc = this.director.encounter, race = this.slipstream.race;
+          return {
+            mode: this.mode, ship: this.ship.state, enemies: this.fleet.count(), tone: this.journal.data.tone, hull: Math.round(this.aster.hull), shield: Math.round(this.aster.shield), down: this.aster.down,
+            encounter: enc ? { rift: enc.rift.id, wave: enc.wave, waves: enc.waves.length, phase: enc.phase } : null,
+            race: race ? { next: race.next, t: +race.t.toFixed(2) } : null, pedals: { ...this.journal.data.pedals },
+          };
+        },
+      },
     };
   }
 
@@ -137,6 +175,17 @@ export class Game {
     this.combat = new Combat(this.scene, { fx: this.fx, sound: this.sound, events: this.#combatEvents() });
     this.shards = new Shards(this.scene, floraGltf);
     this.challenges = new Challenges(this.scene, { fx: this.fx, sound: this.sound, events: this.#challengeEvents() });
+    // Deep space: rifts and their Static, slipstream gates, speed.
+    this.spaceFx = new FX(this.scene, { reducedMotion: this.settings.reducedMotion, scale: 14 });
+    this.scenery = new SpaceScenery(this.scene);
+    this.fleet = new SpaceFleet(this.scene, { fx: this.spaceFx, sound: this.sound, scenery: this.scenery, events: this.#fleetEvents() });
+    this.director = new SpaceDirector({ fleet: this.fleet, events: this.#directorEvents(), clears: id => this.journal.riftClears(id) });
+    this.slipstream = new Slipstream(this.scene, { events: this.#slipstreamEvents() });
+    this.speedLines = new SpeedLines(this.scene);
+    for (const rift of RIFTS) if (this.journal.riftClears(rift.id)) this.scenery.setState(rift.id, 'silenced');
+    this.applyLoadout();
+    this.aster.shield = this.loadout.shieldMax;
+    this.hud.setTone(this.journal.data.tone);
     this.player = new Player();
     this.rig = new CameraRig(this.camera);
     this.rig.reducedMotion = this.settings.reducedMotion;
@@ -200,8 +249,15 @@ export class Game {
     if ('volume' in patch) this.sound.setVolume(patch.volume);
     if ('sensitivity' in patch) this.input.sensitivity = patch.sensitivity;
     if ('invertY' in patch) this.input.invertY = patch.invertY;
-    if ('reducedMotion' in patch) { this.rig.reducedMotion = this.fx.reducedMotion = this.settings.reducedMotion; }
+    if ('reducedMotion' in patch) { this.rig.reducedMotion = this.fx.reducedMotion = this.spaceFx.reducedMotion = this.settings.reducedMotion; }
     if ('quality' in patch) this.applyQuality(detectQuality(patch.quality));
+    if (patch.patrols === false) this.fleet.despawn('patrol');
+  }
+
+  /** Re-reads the engaged pedals (after a purchase on the pedalboard). */
+  applyLoadout() {
+    this.loadout = loadout(this.journal.data.pedals);
+    this.aster.shield = Math.min(this.aster.shield, this.loadout.shieldMax);
   }
 
   applyQuality(quality) {
@@ -266,6 +322,7 @@ export class Game {
       const code = event.code;
       const open = this.panels.isOpen;
       if (code === 'KeyM') { event.preventDefault(); this.panels.toggle('map'); }
+      else if (code === 'KeyU') { event.preventDefault(); this.panels.toggle('pedals'); }
       else if (code === 'KeyJ' || (code === 'Tab' && !open)) { event.preventDefault(); this.panels.toggle('journal'); }
       else if (code === 'KeyH' && !open) this.panels.open('controls');
       else if (code === 'Escape' && !open && !this.input.locked) this.panels.open('pause');
@@ -317,9 +374,37 @@ export class Game {
     this.rig.lookAlong(this.player.up, site.spawn.forward, -0.1);
     this.combat.clear();
     this.challenges.cancelArena();
+    this.#leaveSpace();
     this.hud.hideCard(); this.card = null;
     Object.assign(this.state, { health: 100, shield: 100, dead: false, invuln: 2.5 });
     if (!intro) { this.mode = 'foot'; this.rig.setMode('foot', 0.01); this.rig.blend = 1; this.#snapFootCamera(); }
+  }
+
+  /** Back on the ground: the fight, the race and the damage stay in space. */
+  #leaveSpace() {
+    this.director.abort('left');
+    this.fleet.clear();
+    this.slipstream.abortRace();
+    if (this.aster.nova) this.sound.setLoop('charge', false);
+    Object.assign(this.aster, { hull: 100, shield: this.loadout.shieldMax, down: false, invuln: 0, echoes: [], reverbs: [], nova: null, aim: null, streak: 0 });
+    this.ship.object.visible = true;
+    document.body.classList.remove('in-static');
+  }
+
+  /** Puts the Aster in flight at `position` (debug, autopilot-free jumps), switching to ship mode if needed. */
+  #enterFlight(position, facing, speed = 160) {
+    if (this.mode !== 'ship') {
+      this.ship.unregisterColliders(this.colliders);
+      this.agent.root.visible = false;
+      this.mode = 'ship'; this.state.emote = false;
+      this.hud.hideCard(); this.card = null;
+      this.hud.setControls('ship');
+      this.rig.setMode('ship', 0.01);
+      this.combat.clear();
+      this.challenges.cancelArena();
+    }
+    this.ship.launchAt(position, facing, new THREE.Vector3(0, 1, 0), speed);
+    this.shipPrev.copy(position);
   }
 
   #snapFootCamera() {
@@ -372,7 +457,8 @@ export class Game {
   /* ========================================================== frame loop */
   #frame() {
     if (this.lost) return;
-    const dt = Math.min(this.clock.getDelta(), this.maxDt);
+    let dt = Math.min(this.clock.getDelta(), this.maxDt);
+    if (this.aster.slowmo > 0) { this.aster.slowmo -= dt; dt *= 0.35; } // the Dissonance falling
     this.renderer.info.reset();
     if (this.paused) { this.pausedFrames = (this.pausedFrames || 0) + 1; if (this.pausedFrames % 3) return; } else this.pausedFrames = 0;
     this.time += dt;
@@ -396,9 +482,13 @@ export class Game {
     lap('flora');
     this.landmarks.update(this.time, dt);
     this.projects.update(this.time, dt);
+    this.scenery.update(this.time, dt);
+    const inShip = this.mode === 'ship';
+    this.speedLines.update(this.camera.position, inShip ? this.ship.velocity : _p.set(0, 0, 0), inShip && !this.aster.down ? 1 - local.inAtmosphere : 0, inShip && this.ship.pulse);
     if (!this.paused) {
       this.#updateWorldSystems(dt);
       this.fx.update(dt);
+      this.spaceFx.update(dt);
     }
     lap('systems');
     this.#updateHUD(dt);
@@ -594,6 +684,7 @@ export class Game {
     this.agent.play('Interact', { layers: ['upper'] });
     this.state.emote = false;
     if (fresh) {
+      this.#reward(TONE.discovery);
       this.fx.ring(_v.copy(poi.position), p.up, this.planet.spec.color, 6, 0.8);
       this.fx.sparks(poi.position, this.planet.spec.color, 18, 5, p.up);
       const prog = this.journal.progress(this.worldId);
@@ -642,6 +733,7 @@ export class Game {
     this.rig.setMode('ship', 1.1);
     const up = _v.copy(this.ship.object.position).sub(this.planet.center).normalize();
     this.ship.takeoff(up);
+    this.shipPrev.copy(this.ship.object.position);
     this.sound.play('shipBoard'); this.sound.play('takeoff');
     this.combat.clear();
     this.challenges.cancelArena();
@@ -649,6 +741,7 @@ export class Game {
 
   #disembark() {
     const ship = this.ship, planet = this.universe.nearest(ship.object.position).planet;
+    this.#leaveSpace();
     this.#setContext(planet);
     const point = ship.boardingPoint(new THREE.Vector3());
     this.player.place(planet, point, ship.forward(new THREE.Vector3()));
@@ -668,32 +761,345 @@ export class Game {
   }
 
   #updateShip(dt) {
-    const input = this.input, ship = this.ship, local = this.universe.local;
+    const input = this.input, ship = this.ship, local = this.universe.local, a = this.aster, lo = this.loadout;
     const look = input.takeLook();
     const planet = local.planet;
     const radialUp = planet ? _u.copy(ship.object.position).sub(planet.center).normalize().clone() : null;
     const altitude = planet ? local.altitude : Infinity;
+    if (a.down) { this.#updateShipDown(dt, { radialUp, altitude }); return; }
     if (input.consume('interact')) this.#shipInteract(planet, altitude);
+    this.shipPrev.copy(ship.object.position);
+    // Incursions jam the pulse drive and hold fights to dogfight speeds; races cap speed so gates stay hittable.
+    const field = this.director.encounter ? this.director.fieldAt(ship.object.position) : null, racing = this.slipstream.racing;
+    const limits = field ? { max: FIELD_LIMITS.max, boost: FIELD_LIMITS.boost * lo.boost, pulse: false }
+      : racing ? { max: RACE_LIMITS.max, boost: RACE_LIMITS.boost * lo.boost, pulse: false } : { boostScale: lo.boost };
     const touchYaw = input.touch.active ? -input.touch.moveX : 0;
     ship.update(dt, {
       pitch: input.down.has('jump') ? 1 : 0, yaw: (input.down.has('left') ? 1 : 0) - (input.down.has('right') ? 1 : 0) + touchYaw, roll: 0,
       throttleUp: input.down.has('forward') || (input.touch.active && input.touch.moveY < -0.3), throttleDown: input.down.has('back') || (input.touch.active && input.touch.moveY > 0.5),
       boost: input.down.has('sprint'), mouse: look,
-    }, { radialUp, altitude, inAtmosphere: planet ? local.inAtmosphere : 0, groundRadiusAt: planet ? (dir => planet.shape.surfaceRadius(dir.x, dir.y, dir.z)) : null, planet, nearestDistance: altitude });
-    this.state.fireCd -= dt;
-    if (input.fire && this.state.fireCd <= 0 && ship.state === 'flying') this.#fireShip();
+    }, { radialUp, altitude, inAtmosphere: planet ? local.inAtmosphere : 0, groundRadiusAt: planet ? (dir => planet.shape.surfaceRadius(dir.x, dir.y, dir.z)) : null, planet, nearestDistance: altitude, limits });
+    const flying = ship.state === 'flying';
+    if (Boolean(field) !== a.inField) { a.inField = Boolean(field); document.body.classList.toggle('in-static', a.inField); }
+    // Weapons and moves.
+    this.state.fireCd -= dt; a.missileCd = Math.max(0, a.missileCd - dt);
+    if (flying) {
+      if (input.fire && this.state.fireCd <= 0) this.#fireCannons();
+      if (input.aim || input.consume('ability2')) this.#fireMissiles();
+      if (input.consume('ability1')) this.#barrelRoll(input);
+      if (input.consume('ultimate')) this.#nova();
+    }
+    this.#updateDelayed(dt);
+    // Gates, encounters, the Static.
+    this.slipstream.update(dt, this.time, this.shipPrev, ship.object.position, { active: flying });
+    this.director.update(dt, { position: ship.object.position, forward: ship.forward(_w), flying, patrols: this.settings.get('patrols') !== false, quiet: Boolean(planet && altitude < 9000) || this.slipstream.racing });
+    this.fleet.update(dt, this.time, {
+      ship: { position: ship.object.position, velocity: ship.velocity, radius: 7, evading: ship.evading || a.invuln > 0 || !flying, ram: lo.ram && (ship.boost || ship.surge > 100) },
+      hitShip: (amount, at, kind) => this.#shipHit(amount, at, kind),
+    });
+    this.#rocks();
+    this.#shipVitals(dt);
     if (ship.scraped) { ship.scraped = false; this.rig.shake = Math.max(this.rig.shake, 0.3); }
-    this.rig.updateShip(dt, ship, { radialUp, altitude, boost: ship.boost || ship.pulse });
+    this.rig.updateShip(dt, ship, { radialUp, altitude, boost: ship.boost || ship.pulse || ship.surge > 120 });
+    this.#updateAim();
+    this.#spaceHint(planet, altitude);
   }
 
-  #fireShip() {
-    this.state.fireCd = 0.12;
-    const fwd = this.ship.forward(new THREE.Vector3());
-    for (const m of this.ship.muzzles) {
-      const origin = m.getWorldPosition(new THREE.Vector3());
-      this.combat.firePlayer(origin, origin.clone().addScaledVector(fwd, 100), { damage: 45, speed: 520 + Math.max(0, this.ship.speed) });
+  /** First time out of the atmosphere: point at the fun. */
+  #spaceHint(planet, altitude) {
+    if (this.spaceHinted || this.ship.state !== 'flying' || (planet && altitude < 12000)) return;
+    this.spaceHinted = true;
+    if (this.director.encounter || this.slipstream.racing) return; // busy: the banners have better things to say
+    this.hud.banner('DEEP SPACE', 'Static rifts (red) and the slipstream circuit (gold) are on your compass. U opens the pedalboard.', 'gold');
+  }
+
+  /* --------------------------------------------------------- the Aster's arsenal */
+  #muzzleCenter(out) {
+    const muzzles = this.ship.muzzles;
+    if (!muzzles.length) return out.copy(this.ship.object.position);
+    out.set(0, 0, 0);
+    for (const m of muzzles) out.add(m.getWorldPosition(_p));
+    return out.divideScalar(muzzles.length);
+  }
+  /** Where the guns point: the lead point of the target nearest the reticle (aim assist), else straight ahead. */
+  #gunDirection(origin, out) {
+    const fwd = this.ship.forward(_w), aim = this.aster.aim;
+    if (aim && out.copy(aim.lead).sub(origin).normalize().dot(fwd) > 0.994) return out; // within ~6° of the nose
+    return out.copy(fwd);
+  }
+  #fireCannons() {
+    const lo = this.loadout;
+    this.state.fireCd = lo.fireInterval;
+    const origin = this.#muzzleCenter(new THREE.Vector3());
+    this.#volley(origin, this.#gunDirection(origin, new THREE.Vector3()), lo.damage);
+    if (lo.echo > 0) this.aster.echoes.push({ t: 0.16, damage: lo.damage * lo.echo });
+    this.sound.play('fire', { tier: Math.min(4, 1 + levelOf(this.journal.data.pedals, 'overdrive')), volume: 0.6 });
+  }
+  #volley(origin, dir, damage) {
+    const lo = this.loadout, ship = this.ship, up = ship.up(_u), right = _v.crossVectors(dir, up).normalize();
+    for (let i = 0; i < lo.bolts; i++) {
+      const off = i - (lo.bolts - 1) / 2;
+      this.fleet.firePlayer(origin.clone().addScaledVector(right, off * 1.6), dir.clone().applyAxisAngle(up, off * lo.spread), damage, ship.velocity);
     }
-    this.sound.play('fire', { tier: 2, volume: 0.7 });
+  }
+  #fireMissiles() {
+    const lo = this.loadout, a = this.aster;
+    if (!lo.missiles) { if (!a.missileHint) { a.missileHint = true; this.hud.toast('Engage the Harmonics pedal (press U) for homing missiles.'); } return; }
+    if (a.missileCd > 0) return;
+    a.missileCd = lo.missileCooldown;
+    const ship = this.ship, fwd = ship.forward(new THREE.Vector3()), up = ship.up(new THREE.Vector3()), right = new THREE.Vector3().crossVectors(fwd, up).normalize();
+    const target = a.aim?.target || this.fleet.aimTarget(ship.object.position, fwd, 0.7, 3200);
+    for (let i = 0; i < lo.missiles; i++) {
+      const side = i % 2 ? 1 : -1, row = Math.floor(i / 2);
+      const origin = ship.object.position.clone().addScaledVector(right, side * (4 + row * 1.5)).addScaledVector(up, 1.2 - row);
+      const velocity = ship.velocity.clone().addScaledVector(right, side * (70 + row * 30)).addScaledVector(fwd, 140).addScaledVector(up, row * 25 - 10);
+      this.fleet.fireMissile(origin, velocity, target, lo.missileDamage);
+    }
+    this.sound.play('missile');
+  }
+  #barrelRoll(input) {
+    const a = this.aster, dir = input.down.has('left') ? -1 : input.down.has('right') ? 1 : (a.rollSide = -a.rollSide);
+    if (this.ship.barrelRoll(dir)) this.sound.play('dash', { pitch: 0.8 });
+    else this.sound.play('denied', { volume: 0.3 });
+  }
+  /** The Drop, in space: a shockwave that lands on the beat of the riser. */
+  #nova() {
+    const s = this.state;
+    if (s.charge < 1) { this.sound.play('denied', { volume: 0.5 }); this.hud.toast('The Drop charges as you fight, race and explore.'); return; }
+    s.charge = 0;
+    this.aster.nova = { t: 0.95 };
+    this.sound.play('ultimate');
+    this.sound.setLoop('charge', true, { amount: 1 });
+    this.spaceFx.ring(this.ship.object.position, this.ship.forward(_v), '#c9a6ff', 60, 0.95);
+  }
+  #updateDelayed(dt) {
+    const a = this.aster, ship = this.ship;
+    for (let i = a.echoes.length - 1; i >= 0; i--) {
+      if ((a.echoes[i].t -= dt) > 0) continue;
+      if (ship.state === 'flying') { const origin = this.#muzzleCenter(new THREE.Vector3()); this.#volley(origin, this.#gunDirection(origin, new THREE.Vector3()), a.echoes[i].damage); }
+      a.echoes.splice(i, 1);
+    }
+    for (let i = a.reverbs.length - 1; i >= 0; i--) {
+      const r = a.reverbs[i];
+      if ((r.t -= dt) > 0) continue;
+      a.reverbs.splice(i, 1);
+      this.spaceFx.ring(r.at, _v.set(0, 1, 0), '#e2b8ff', 170, 0.45);
+      this.fleet.blast(r.at, 170, 90, 'reverb');
+    }
+    if (a.nova && (a.nova.t -= dt) <= 0) {
+      a.nova = null;
+      const at = ship.object.position.clone(), up = ship.up(_u);
+      for (const [color, size, life] of [['#c9a6ff', 1100, 1.4], ['#8cf0d1', 850, 1.1], ['#ffffff', 520, 0.7]]) this.spaceFx.ring(at, up, color, size, life);
+      this.spaceFx.flash(at, '#e8dcff', 900, 0.5);
+      this.sound.setLoop('charge', false);
+      this.rig.shake = 1.2;
+      if (!this.settings.reducedMotion) this.hud.pulseBody('is-drop', 900);
+      this.fleet.blast(at, 1100, 420, 'nova');
+    }
+  }
+
+  /* --------------------------------------------------------- the Aster takes hits */
+  #shipHit(amount, at, kind) {
+    const a = this.aster, ship = this.ship;
+    if (a.down || a.invuln > 0 || ship.state !== 'flying' || ship.evading) return;
+    const hadShield = a.shield > 0, absorbed = Math.min(a.shield, amount);
+    a.shield -= absorbed; a.hull = Math.max(0, a.hull - (amount - absorbed));
+    a.lastHit = this.time;
+    ship.flashShield(hadShield ? 1 : 0.4);
+    this.fx.sparks(at, a.shield > 0 ? '#9ffcea' : '#ffb38a', 6, 8); // small: these happen right in front of the camera
+    if (hadShield && a.shield <= 0) this.sound.play('shieldBreak');
+    this.sound.play(a.shield > 0 ? 'hit' : 'hurt', { volume: Math.min(1, 0.4 + amount / 25) });
+    this.rig.shake = Math.max(this.rig.shake, Math.min(0.6, amount / 28));
+    if (amount > absorbed) this.hud.pulseBody('is-hurt', 420);
+    if (a.hull <= 0) this.#shipDown();
+    void kind;
+  }
+  #shipVitals(dt) {
+    const a = this.aster, lo = this.loadout;
+    a.invuln = Math.max(0, a.invuln - dt);
+    if (this.time - a.lastHit > lo.shieldDelay) a.shield = Math.min(lo.shieldMax, a.shield + lo.shieldRegen * dt);
+    if (this.time - a.lastHit > 8) a.hull = Math.min(100, a.hull + 5 * dt); // nanite patching between fights
+    if (a.streak && this.time - a.lastKill > 3.5) a.streak = 0;
+  }
+  /** The debris fields are solid: bounce off, and hit hard rocks hard. */
+  #rocks() {
+    const ship = this.ship; if (ship.state !== 'flying') return;
+    const hit = this.scenery.collide(ship.object.position, 7); if (!hit) return;
+    ship.object.position.addScaledVector(hit.normal, hit.depth);
+    const into = ship.velocity.dot(hit.normal);
+    if (into >= 0) return;
+    ship.velocity.addScaledVector(hit.normal, -into * 1.6);
+    ship.speed *= 0.6;
+    this.rig.shake = Math.max(this.rig.shake, 0.5);
+    this.sound.play('land', { surface: 'rock', volume: 0.9 });
+    if (-into > 60) this.#shipHit(Math.min(35, -into * 0.06), ship.object.position.clone(), 'rock');
+  }
+  #shipDown() {
+    const a = this.aster, ship = this.ship, at = ship.object.position.clone();
+    Object.assign(a, { down: true, downTimer: 2.8, streak: 0, echoes: [], nova: null });
+    this.spaceFx.flash(at, '#ffd2b0', 320, 0.6);
+    this.spaceFx.ring(at, ship.up(_u), '#ff7a5c', 160, 0.9);
+    this.spaceFx.sparks(at, '#ffb38a', 26, 140);
+    this.sound.play('boom', { pitch: 0.55, volume: 1.4 }); this.sound.play('shieldBreak');
+    this.sound.setLoop('engine', false); this.sound.setLoop('boost', false); this.sound.setLoop('charge', false);
+    ship.object.visible = false;
+    this.slipstream.abortRace();
+    a.respawn = this.director.respawnPoint(at) || { position: at, facing: ship.forward(new THREE.Vector3()) };
+    this.director.abort('down');
+    this.fleet.clear(); // patrols and every bolt still in flight
+    this.hud.banner('SIGNAL LOST', 'The Aster re-forms beyond the static.', 'coral');
+    setTimeout(() => { if (this.aster.down) document.body.classList.add('is-fading'); }, 1400);
+  }
+  #updateShipDown(dt, env) {
+    const a = this.aster;
+    this.rig.updateShip(dt, this.ship, env);
+    if ((a.downTimer -= dt) > 0) return;
+    const spot = a.respawn;
+    this.ship.launchAt(spot.position, spot.facing, new THREE.Vector3(0, 1, 0), 150);
+    this.ship.object.visible = true;
+    Object.assign(a, { down: false, hull: 100, shield: this.loadout.shieldMax, invuln: 3, lastHit: -99, respawn: null });
+    this.shipPrev.copy(spot.position);
+    document.body.classList.remove('is-fading');
+    this.hud.toast(spot.rift ? `Re-formed at the edge of ${spot.rift.name}. Fly back in when you're ready.` : 'Re-formed. Shields at full.');
+  }
+
+  /** The target nearest the reticle and where to lead it (aim assist, missiles, the HUD pip). */
+  #updateAim() {
+    const ship = this.ship, a = this.aster, fwd = ship.forward(_w);
+    const target = this.fleet.count() ? this.fleet.aimTarget(ship.object.position, fwd, 0.35, 2600) : null;
+    if (!target) { a.aim = null; return; }
+    const speed = 1500 + Math.max(0, ship.velocity.dot(fwd));
+    leadPoint(ship.object.position, target.position, this.fleet.velocityOf(target.enemy), speed, a.lead);
+    a.aim = { target, lead: a.lead };
+  }
+
+  /* --------------------------------------------------------- rewards */
+  #reward(tone) {
+    if (!tone) return;
+    this.hud.setTone(this.journal.addTone(tone), tone);
+  }
+  #fleetEvents() {
+    return {
+      onHit: (e, amount, at) => {
+        this.hud.hitmarker(false);
+        this.sound.play('hitmarker', { volume: 0.45 });
+        const s = this.#toScreen(at); if (s) this.hud.popup(s.x, s.y, String(Math.round(amount)));
+      },
+      onKill: (e, cause) => this.#staticDown(e, cause),
+      onPartDestroyed: (e, part) => {
+        if (part.name === 'core') return;
+        const left = e.parts.filter(p => p.name !== 'core' && !p.dead).length;
+        this.#reward(TONE.node);
+        this.state.charge = Math.min(1, this.state.charge + 0.15);
+        this.hud.toast(left ? `Amp silenced. ${left} to go.` : 'Every amp is down.', 'violet');
+      },
+      onBossPhase: () => {
+        this.hud.banner('THE CORE IS OPEN', 'It answers with spirals and shockwaves. Roll (Q) through the rings.', 'violet');
+        this.sound.play('bossRoar');
+      },
+      onShieldBlock: () => this.hud.toast('The core is shielded. Silence the four amps first.'),
+      onExplosion: (at, size) => {
+        if (this.mode !== 'ship') return;
+        const d = at.distanceTo(this.ship.object.position);
+        if (d < 150 * size) this.rig.shake = Math.max(this.rig.shake, Math.min(0.9, size * 0.1 * (1 - d / (150 * size))));
+      },
+    };
+  }
+  #staticDown(e, cause) {
+    if (cause === 'detonate') return; // a spike that hit you earns nothing
+    const a = this.aster, boss = e.type === 'boss', before = this.run.level;
+    this.run.kill(false);
+    this.state.charge = Math.min(1, this.state.charge + e.def.charge);
+    const tone = TONE[e.type] || 0;
+    this.#reward(tone);
+    a.streak = this.time - a.lastKill < 3.5 ? a.streak + 1 : 1; a.lastKill = this.time;
+    const call = STREAK_CALLS[a.streak];
+    if (call) { this.hud.streak(a.streak, call); this.#reward(TONE.streak); this.sound.play('pickup'); }
+    this.hud.hitmarker(true);
+    this.sound.play('kill', { volume: 0.7 });
+    const s = this.#toScreen(e.position); if (s) this.hud.popup(s.x, s.y, `+${tone} TONE`, true);
+    if (this.loadout.reverb && !boss) a.reverbs.push({ t: 0.12, at: e.position.clone() }); // reverb kills ring out too: chain reactions
+    if (this.run.level > before) { this.sound.play('levelUp'); this.hud.toast(`The agent's rifle evolved: ${this.run.weapon.name}`, 'violet'); }
+    if (boss) this.#dissonanceDown(e);
+  }
+  #dissonanceDown(e) {
+    this.aster.slowmo = this.settings.reducedMotion ? 0 : 1.4;
+    this.run.reward('flagship', 'flagship');
+    this.spaceFx.flash(e.position, '#ffffff', 2600, 0.9);
+    for (const [color, size] of [['#ff3d6e', 1400], ['#c9a6ff', 1000], ['#ffffff', 600]]) this.spaceFx.ring(e.position, this.ship.forward(_v), color, size, 1.6);
+    this.sound.play('ultimate');
+    this.hud.banner('THE DISSONANCE IS SILENCED', `+${TONE.boss} Tone. The worlds can hear each other again.`, 'gold');
+    if (this.journal.earnPedal('reverb')) {
+      this.applyLoadout();
+      setTimeout(() => this.hud.toast('New pedal earned: Reverb. Your kills now ring out and shatter nearby Static.', 'violet'), 3600);
+    }
+  }
+  #directorEvents() {
+    const plural = { glitch: 'glitches', spike: 'spikes', jammer: 'jammers' };
+    const wave = enc => enc.waves[enc.wave].map(([type, count]) => `${count} ${count > 1 ? plural[type] : type}`).join(', ');
+    return {
+      onIncursion: enc => {
+        this.scenery.setState(enc.rift.id, 'active');
+        if (enc.resumed) this.hud.banner(`BACK INTO ${enc.rift.name.toUpperCase()}`, `Resuming at wave ${enc.wave + 1} of ${enc.waves.length}.`, 'coral', `RIFT ${enc.rift.number}`);
+        else this.hud.banner(enc.encore ? `ENCORE ${ROMAN[Math.min(3, enc.clears)] || enc.clears}` : 'STATIC INCURSION', `${enc.rift.name}. ${enc.waves.length} waves. Fly out of the field to retreat.`, 'coral', `RIFT ${enc.rift.number}`);
+        this.sound.play('warpStart');
+      },
+      onWave: enc => {
+        const final = enc.waves[enc.wave].some(([type]) => type === 'boss');
+        if (final) { this.hud.banner('THE DISSONANCE', 'Silence its four amps to open the core.', 'violet', 'FINAL WAVE'); this.sound.play('bossRoar'); }
+        else this.hud.toast(`Wave ${enc.wave + 1} of ${enc.waves.length}: ${wave(enc)}.`, 'coral');
+      },
+      onWaveCleared: enc => {
+        this.#reward(TONE.wave);
+        this.aster.shield = Math.min(this.loadout.shieldMax, this.aster.shield + 40);
+        this.hud.toast(`Wave cleared. +${TONE.wave} Tone, shields topped up.`, 'gold');
+        this.sound.play('levelUp');
+      },
+      onRiftCleared: enc => {
+        const clears = this.journal.clearRift(enc.rift.id), first = clears === 1;
+        this.scenery.setState(enc.rift.id, 'silenced');
+        this.#reward(first ? TONE.rift : TONE.encore);
+        this.run.reward(`rift:${enc.rift.id}`, 'rift');
+        this.hud.banner('RIFT SILENCED', first ? `${enc.rift.name} falls quiet. +${TONE.rift} Tone.` : `Encore cleared. +${TONE.encore} Tone. It will come back louder.`, 'gold');
+        this.sound.play('levelUp');
+      },
+      onAbort: (enc, reason) => {
+        this.scenery.setState(enc.rift.id, this.journal.riftClears(enc.rift.id) ? 'silenced' : 'open');
+        if (reason === 'retreat') this.hud.toast(`You left ${enc.rift.name}. The Static settles, for now.`);
+      },
+      onPatrol: () => this.hud.toast('A Static patrol is closing in. Fight, or outrun it with the pulse drive (hold Shift).', 'coral'),
+    };
+  }
+  #slipstreamEvents() {
+    const medals = ['bronze', 'silver', 'gold'];
+    return {
+      onGate: (gate, info) => {
+        this.ship.addSurge(this.loadout.surge);
+        this.sound.play('gate', { pitch: gate.kind === 'lane' ? 1 + (info.chain || 0) * 0.06 : 1 });
+        this.rig.shake = Math.max(this.rig.shake, 0.15);
+        this.hud.pulseBody('is-surge', 420);
+        if (this.run.reward(gate.id, 'gate')) this.#reward(TONE.gate);
+      },
+      onRaceStart: () => this.hud.banner('SLIPSTREAM CIRCUIT', `Sixteen gates around BEACN. Gold under ${formatTime(this.slipstream.medals.gold)}.`, 'gold', 'GO'),
+      onLap: ({ time, medal }) => {
+        const best = this.journal.recordLap(time);
+        this.#reward(TONE.lap);
+        this.run.reward('lap', 'lap');
+        let bonus = 0;
+        if (medal) for (const m of medals.slice(0, medals.indexOf(medal) + 1)) if (this.journal.addMedal(m)) bonus += TONE[m];
+        this.#reward(bonus);
+        this.hud.banner(`LAP ${formatTime(time)}`, `${medal ? `${medal.toUpperCase()} MEDAL. ` : ''}${best ? 'A new best.' : `Best ${formatTime(this.journal.data.circuitBest)}.`}${bonus ? ` +${bonus} Tone.` : ''}`, 'gold');
+        this.sound.play('levelUp');
+      },
+      onRaceAbort: () => this.hud.toast('Race abandoned. Fly through the first gold gate to start again.'),
+      onSlingshot: gate => {
+        this.ship.addSurge(2600);
+        this.#reward(TONE.slingshot);
+        this.hud.banner('SLINGSHOT', `Toward ${this.planets.get(gate.to)?.spec.name}. Hold Shift for the pulse drive.`, 'gold');
+        this.sound.play('warpStart');
+        this.rig.shake = 0.6;
+      },
+    };
   }
 
   #shipInteract(planet, altitude) {
@@ -794,6 +1200,35 @@ export class Game {
     else go();
   }
 
+  /** Autopilot to a point in space, arriving in flight and facing along `toward`. */
+  #autopilotTo(end, toward, label) {
+    const ship = this.ship;
+    const go = () => {
+      const from = ship.object.position.clone(), here = this.universe.nearest(from), reach = Math.max(3000, from.distanceTo(end) * 0.25);
+      const leave = here.planet && here.altitude < 20000 ? from.clone().sub(here.planet.center).normalize() : ship.forward(new THREE.Vector3());
+      ship.travelTo(from.clone().addScaledVector(leave, reach), end.clone().addScaledVector(toward, -reach), end, () => {});
+      this.sound.play('warpStart');
+      this.hud.toast(`Autopilot: ${label}`);
+    };
+    if (ship.state === 'landed') { ship.takeoff(_v.copy(ship.object.position).sub(this.planet.center).normalize()); setTimeout(() => { if (ship.state === 'flying') go(); }, 1900); }
+    else if (ship.state === 'flying') go();
+  }
+
+  /** "Set course" on the map: autopilot to a rift's edge or the circuit's start line. */
+  course(target) {
+    if (!this.ready) return;
+    if (!this.started) this.start();
+    if (this.mode !== 'ship' || !['flying', 'landed'].includes(this.ship.state)) { this.hud.toast('Board the Aster first (E at your ship), then set a course.'); return; }
+    if (target === 'circuit') {
+      const gate = this.slipstream.circuit[0];
+      this.#autopilotTo(gate.center.clone().addScaledVector(gate.normal, -1800), gate.normal.clone(), 'the slipstream circuit');
+      return;
+    }
+    const rift = riftById(target); if (!rift) return;
+    const center = new THREE.Vector3(...rift.position), out = this.ship.object.position.clone().sub(center).normalize();
+    this.#autopilotTo(center.clone().addScaledVector(out, FIELD_RADIUS + 900), out.clone().negate(), rift.name);
+  }
+
   respawn() {
     const planet = this.planet || this.planets.get('philosophy');
     if (this.mode === 'ship') { this.agent.root.visible = true; this.sound.setLoop('engine', false); }
@@ -839,6 +1274,7 @@ export class Game {
   #wardenDefeated(enemy) {
     const id = enemy.planet.spec.id;
     const fresh = this.journal.addWarden(id);
+    if (fresh) this.#reward(TONE.warden);
     this.hud.toast(`${enemy.name || 'The warden'} defeated`, 'gold');
     this.sound.play('levelUp');
     if (fresh && this.journal.data.wardens.length >= 5) {
@@ -930,6 +1366,7 @@ export class Game {
 
   #collectShard(shard) {
     const fresh = this.journal.addShard(shard.id);
+    if (fresh) this.#reward(TONE.shard);
     this.run.reward(shard.id, 'shard');
     this.state.charge = Math.min(1, this.state.charge + 0.2);
     this.sound.play('pickup');
@@ -1008,24 +1445,54 @@ export class Game {
         const site = this.#siteFor(local.planet);
         markers.push({ id: 'site', bearing: bearing(site.pad.position), kind: 'poi', main: true, label: 'LANDING PAD', distance: site.pad.position.distanceTo(eye) });
       }
+      // Deep space: rifts, the circuit (or the next gate) and the Static around you.
+      for (const rift of this.director.rifts) {
+        const silenced = this.journal.riftClears(rift.id) > 0, d = rift.center.distanceTo(eye), b = bearing(rift.center), centered = Math.abs(b) < 0.22;
+        markers.push({ id: `rift:${rift.id}`, bearing: b, kind: 'rift', color: silenced ? rift.calm : rift.color, label: centered ? rift.name.toUpperCase() : '', distance: d, quiet: !centered });
+        const sp = d > FIELD_RADIUS + 500 && this.#toScreen(rift.center, {});
+        if (sp) labels.push({ id: `rf:${rift.id}`, x: sp.x, y: sp.y, title: rift.name, sub: `${silenced ? 'SILENCED · ENCORE' : 'STATIC RIFT'} · ${formatDistance(d)}`, found: silenced, main: false, opacity: 0.92 });
+      }
+      const gate = this.slipstream.nextGate;
+      if (gate) markers.push({ id: 'gate', bearing: bearing(gate.center), kind: 'gate', main: true, label: gate.kind === 'circuit' ? (gate.index === 0 ? 'FINISH' : `GATE ${gate.index + 1}`) : 'SLINGSHOT', distance: gate.center.distanceTo(eye) });
+      else {
+        const start = this.slipstream.circuit[0], d = start.center.distanceTo(eye), b = bearing(start.center), centered = Math.abs(b) < 0.22;
+        markers.push({ id: 'gate', bearing: b, kind: 'gate', label: centered ? 'CIRCUIT' : '', distance: d, quiet: !centered });
+        const sp = d > 1500 && this.#toScreen(start.center, {});
+        if (sp) labels.push({ id: 'circuit', x: sp.x, y: sp.y, title: 'Slipstream circuit', sub: `START LINE · ${formatDistance(d)}`, found: false, main: false, opacity: 0.85 });
+      }
+      for (const t of this.fleet.targets()) if (!t.part || t.part.name === 'core') markers.push({ id: `foe:${t.enemy.id}`, bearing: bearing(t.position), kind: 'enemy', distance: t.position.distanceTo(eye), quiet: true });
     }
     hud.setCompass(markers);
     hud.setLabels(labels);
+    if (this.mode === 'ship') this.#updateTargets();
+    else if (this.targetsShown) { hud.setTargets([]); hud.setAim(null); this.targetsShown = false; }
     if (!slow) return;
     // Slow-changing panels.
     hud.setObjective(objective.title, objective.detail);
-    const prog = this.worldId ? this.journal.progress(this.worldId) : this.journal.progress();
-    const shards = this.worldId ? this.journal.data.shards.filter(x => x.startsWith(`${this.worldId}:`)).length : this.journal.data.shards.length;
-    hud.setProgress(prog.found, prog.total, shards, this.worldId ? SHARDS_PER_WORLD : SHARDS_PER_WORLD * 5);
+    // Far from every world, the HUD speaks for the whole system (or the rift you are fighting in).
+    const local = this.universe.local, enc = this.mode === 'ship' ? this.director.encounter : null;
+    const deep = this.mode === 'ship' && (Boolean(enc) || !(local.planet && local.altitude < 30000));
+    const where = enc ? `rift:${enc.rift.id}` : deep ? 'deep' : this.worldId;
+    if (where !== this.whereShown) {
+      this.whereShown = where;
+      hud.setWorld(enc ? { number: `RIFT ${enc.rift.number}`, name: enc.rift.name, color: enc.rift.color } : deep ? null : this.planet?.spec ?? null);
+    }
+    const scoped = this.worldId && !deep;
+    const prog = scoped ? this.journal.progress(this.worldId) : this.journal.progress();
+    const shards = scoped ? this.journal.data.shards.filter(x => x.startsWith(`${this.worldId}:`)).length : this.journal.data.shards.length;
+    hud.setProgress(prog.found, prog.total, shards, scoped ? SHARDS_PER_WORLD : SHARDS_PER_WORLD * 5);
     hud.setVitals(s.health, s.shield, this.player.jet);
     hud.setAbilities({ dash: this.player.dashCooldown / 2.6, pulse: s.pulseCd / ABILITIES.pulse.cooldown, charge: s.charge, weapon: this.run.weapon.name });
     const warden = this.combat.activeWarden;
     hud.setBoss(warden ? warden.name : null, warden ? warden.hp / warden.maxHp : 0);
     if (this.mode === 'ship') {
-      const local = this.universe.local, ship = this.ship;
-      const mode = { landed: 'LANDED', takeoff: 'TAKEOFF', landing: 'LANDING', autopilot: 'AUTOPILOT' }[ship.state] || (ship.pulse ? 'PULSE DRIVE' : local.inAtmosphere > 0.05 ? 'ATMOSPHERE' : 'OPEN SPACE');
+      const local = this.universe.local, ship = this.ship, a = this.aster, lo = this.loadout, race = this.slipstream.race;
+      const mode = { landed: 'LANDED', takeoff: 'TAKEOFF', landing: 'LANDING', autopilot: 'AUTOPILOT' }[ship.state]
+        || (ship.pulse ? 'PULSE DRIVE' : a.inField ? 'STATIC FIELD · DRIVE JAMMED' : ship.surge > 120 ? 'SLIPSTREAM' : local.inAtmosphere > 0.05 ? 'ATMOSPHERE' : 'OPEN SPACE');
       hud.setFlight(true, { speed: ship.speed, altitude: local.planet && local.altitude < 40000 ? local.altitude : Infinity, mode });
-    } else hud.setFlight(false);
+      hud.setShip(true, { hull: a.hull, shield: a.shield, shieldMax: lo.shieldMax, weapon: this.#weaponLabel(), missiles: { locked: !lo.missiles, cd: lo.missiles ? a.missileCd / lo.missileCooldown : 0 }, roll: ship.rollCooldown / 1.9, charge: s.charge });
+      hud.setRace(race ? { time: formatTime(race.t), detail: `${race.next === 0 ? 'FINISH LINE' : `GATE ${race.next + 1} / 16`} · LAP ${race.lap}${this.journal.data.circuitBest ? ` · BEST ${formatTime(this.journal.data.circuitBest)}` : ''}` } : null);
+    } else { hud.setFlight(false); hud.setShip(false); hud.setRace(null); }
     document.body.classList.toggle('in-ship', this.mode === 'ship');
     document.body.classList.toggle('is-reading', Boolean(this.card));
     document.body.classList.toggle('is-emote', this.state.emote);
@@ -1048,16 +1515,58 @@ export class Game {
     this.canvas.dataset.mode = this.mode;
   }
 
+  /** Brackets on the Static (edge arrows when off screen), the gun reticle and the lead pip. */
+  #updateTargets() {
+    const hud = this.hud, ship = this.ship, a = this.aster, cam = this.camera.position;
+    this.targetsShown = true;
+    if (ship.state !== 'flying' || a.down) { hud.setTargets([]); hud.setAim(null); return; }
+    const items = [], halfH = innerHeight / 2, tan = Math.tan(this.camera.fov * Math.PI / 360);
+    for (const t of this.fleet.targets()) {
+      const id = `${t.enemy.id}:${t.part?.name || ''}`, d = t.position.distanceTo(cam), boss = t.enemy.type === 'boss';
+      const locked = Boolean(a.aim && a.aim.target.enemy === t.enemy && a.aim.target.part === t.part);
+      const sp = this.#toScreen(t.position, {});
+      if (sp) items.push({ id, x: sp.x, y: sp.y, size: THREE.MathUtils.clamp(t.radius * 2.6 * halfH / (d * tan), 18, 120), hp: t.part ? t.part.hp / t.part.max : t.enemy.hp / t.enemy.maxHp, locked, boss, label: locked ? formatDistance(d) : '' });
+      else items.push({ id, ...this.#edgePoint(t.position), edge: true, boss });
+    }
+    hud.setTargets(items);
+    const reticle = this.#toScreen(_p.copy(ship.object.position).addScaledVector(ship.forward(_w), 900), {});
+    if (!reticle) { hud.setAim(null); return; }
+    let lead = null;
+    if (a.aim) { const lp = this.#toScreen(a.aim.lead, {}); if (lp) lead = { x: lp.x, y: lp.y, on: Math.hypot(lp.x - reticle.x, lp.y - reticle.y) < 24 }; }
+    hud.setAim({ x: reticle.x, y: reticle.y, lead });
+  }
+  /** A point on an ellipse near the screen edge, toward something off screen (and the arrow's angle). */
+  #edgePoint(position) {
+    _w.copy(position).applyMatrix4(this.camera.matrixWorldInverse);
+    let dx = _w.x, dy = -_w.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) { dx = 0; dy = 1; } else { dx /= len; dy /= len; }
+    // An ellipse that stays clear of the compass (top) and the Aster's bar (bottom).
+    const top = 140, bottom = innerHeight - 200, cx = innerWidth / 2, cy = (top + bottom) / 2, rx = cx - 48, ry = Math.max(60, (bottom - top) / 2);
+    const k = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+    return { x: cx + dx * k, y: cy + dy * k, angle: Math.atan2(dy, dx) * 180 / Math.PI + 90 };
+  }
+  #weaponLabel() {
+    const p = this.journal.data.pedals;
+    return ['CANNONS', ...['overdrive', 'octaver', 'delay'].filter(id => levelOf(p, id)).map(id => `${id.toUpperCase()} ${ROMAN[levelOf(p, id)]}`)].join(' · ');
+  }
+
   /** What to do next, phrased for the visitor. */
   #objective(world) {
     if (this.mode === 'ship') {
-      const local = this.universe.local, ship = this.ship;
-      if (ship.state === 'autopilot') return { title: 'Autopilot engaged', detail: 'Sit back. Landing is automatic.' };
+      const local = this.universe.local, ship = this.ship, enc = this.director.encounter, race = this.slipstream.race;
+      if (this.aster.down) return { title: 'Signal lost', detail: 'The Aster is re-forming beyond the static.' };
+      if (ship.state === 'autopilot') return { title: 'Autopilot engaged', detail: 'Sit back. The Aster flies itself.' };
       if (ship.state === 'takeoff' || ship.state === 'landing') return { title: ship.state === 'takeoff' ? 'Taking off' : 'Landing', detail: 'Hold on.' };
+      const boss = this.fleet.boss;
+      if (boss) return boss.phase === 1 ? { title: 'Silence the four amps', detail: 'The core stays shielded until every amp is down.' } : { title: 'Break the core', detail: 'Spirals and shockwaves: roll (Q) through the rings.' };
+      if (enc) return { title: `${enc.rift.name} · wave ${enc.wave + 1} of ${enc.waves.length}`, detail: enc.phase === 'warning' ? 'The Static is tearing through…' : `${this.fleet.count('rift')} left. Fly out of the field to retreat.` };
+      if (race) return { title: `Slipstream circuit · ${race.next === 0 ? 'the finish line' : `gate ${race.next + 1} of 16`}`, detail: `Thread the bright gate. Gold under ${formatTime(this.slipstream.medals.gold)}, silver ${formatTime(this.slipstream.medals.silver)}, bronze ${formatTime(this.slipstream.medals.bronze)}.` };
+      if (this.fleet.count('patrol')) return { title: 'Static patrol', detail: 'Fight it, or outrun it with the pulse drive (hold Shift).' };
       if (this.#nearProject()) { const p = this.#nearProject(); return { title: `${p.name}`, detail: `A featured project. Press E to open it in a new tab.` }; }
       if (local.planet && local.altitude < LAND_ALTITUDE) return { title: `Land on ${local.planet.spec.name}`, detail: 'Press E. The ship finds flat ground, or the pad near the site.' };
       if (local.planet && local.altitude < 30000) return { title: `Approaching ${local.planet.spec.name}`, detail: 'Descend to land, or press M to travel elsewhere.' };
-      return { title: 'Open space', detail: 'Steer toward a world, or press M for autopilot. Shift engages the pulse drive.' };
+      return { title: 'Open space', detail: 'Fly to a world, a red rift or the gold circuit. M opens the map, U the pedalboard. Shift is the pulse drive.' };
     }
     if (!world || !this.planet) return { title: 'Explore', detail: '' };
     if (this.challenges.arenaActive) { const a = this.challenges.arena; return { title: `Target run · ${a.hits} / ${a.total}`, detail: `${Math.max(0, a.limit - a.t).toFixed(1)} seconds left` }; }
@@ -1084,7 +1593,7 @@ export class Game {
     const ship = this.ship;
     const flying = this.mode === 'ship' && ['flying', 'takeoff', 'landing', 'autopilot'].includes(ship.state);
     this.sound.setLoop('engine', flying, { throttle: Math.min(1, Math.abs(ship.speed) / 400), speed: ship.speed });
-    this.sound.setLoop('boost', flying && (ship.boost || ship.pulse));
+    this.sound.setLoop('boost', flying && (ship.boost || ship.pulse || ship.surge > 150));
     this.sound.setLoop('jetpack', this.mode === 'foot' && this.player.jetting, { thrust: 1 });
     this.soundTimer -= dt;
     if (this.soundTimer > 0) return;
@@ -1093,7 +1602,7 @@ export class Game {
     this.sound.setScene({
       world: local.planet && local.altitude < 25000 ? local.planet.spec.id : null,
       mode: this.mode === 'ship' ? 'ship' : 'foot', altitude: Number.isFinite(local.altitude) ? local.altitude : 1e6,
-      speed: this.mode === 'ship' ? ship.speed : this.player.velocity.length(), combat: this.combat.threat,
+      speed: this.mode === 'ship' ? ship.speed : this.player.velocity.length(), combat: Math.max(this.combat.threat, this.mode === 'ship' ? this.fleet.threat : 0),
       night: 1 - local.day, reading: this.paused || Boolean(this.card),
     });
   }

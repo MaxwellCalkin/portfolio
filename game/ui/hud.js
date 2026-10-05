@@ -22,10 +22,17 @@ export class HUD {
       card: $('u-card'), cardEyebrow: $('u-card-eyebrow'), cardTitle: $('u-card-title'), cardText: $('u-card-text'), cardList: $('u-card-list'), cardActions: $('u-card-actions'), cardCount: $('u-card-count'),
       toasts: $('u-toasts'), labels: $('u-labels'), popups: $('u-popups'), controls: $('u-controls'),
       touch: $('u-touch'), stick: $('u-stick'),
+      aim: $('u-aim'), lead: $('u-lead'), targets: $('u-targets'), tone: $('u-tone-value'), toneDelta: $('u-tone-delta'),
+      race: $('u-race'), raceLabel: $('u-race-label'), raceTime: $('u-race-time'), raceDetail: $('u-race-detail'),
+      streak: $('u-streak'), streakCount: $('u-streak-count'), streakLabel: $('u-streak-label'),
+      banner: $('u-banner'), bannerEyebrow: $('u-banner-eyebrow'), bannerTitle: $('u-banner-title'), bannerSub: $('u-banner-sub'),
+      shipbar: $('u-shipbar'), shipWeapon: $('u-ship-weapon'), hull: $('u-hull'), hullValue: $('u-hull-value'), shipShield: $('u-ship-shield'),
     };
     this.abilityEls = Object.fromEntries([...this.el.abilities.querySelectorAll('[data-ability]')].map(n => [n.dataset.ability, n]));
+    this.shipEls = Object.fromEntries([...this.el.shipbar.querySelectorAll('[data-ship]')].map(n => [n.dataset.ship, n]));
     this.markers = new Map();
     this.labelEls = new Map();
+    this.targetEls = new Map();
     this.cardId = null;
     this.lastToast = { text: '', at: 0 };
     this.hitTimer = null;
@@ -133,11 +140,97 @@ export class HUD {
   }
 
   hitmarker(kill = false) {
-    const c = this.el.crosshair;
-    c.classList.remove('is-hit', 'is-kill'); void c.offsetWidth;
-    c.classList.add('is-hit'); if (kill) c.classList.add('is-kill');
+    for (const c of [this.el.crosshair, this.el.aim]) {
+      c.classList.remove('is-hit', 'is-kill'); void c.offsetWidth;
+      c.classList.add('is-hit'); if (kill) c.classList.add('is-kill');
+    }
     clearTimeout(this.hitTimer);
-    this.hitTimer = setTimeout(() => c.classList.remove('is-hit', 'is-kill'), kill ? 260 : 140);
+    this.hitTimer = setTimeout(() => { for (const c of [this.el.crosshair, this.el.aim]) c.classList.remove('is-hit', 'is-kill'); }, kill ? 260 : 140);
+  }
+
+  /* ------------------------------------------------------------ deep space */
+  /** The Aster's bar. moves: { missiles: { locked, cd }, roll: cd, charge } (cooldowns 0 = ready, 1 = just used) */
+  setShip(on, { hull = 100, shield = 0, shieldMax = 100, weapon = 'CANNONS', missiles = { locked: true, cd: 0 }, roll = 0, charge = 0 } = {}) {
+    this.el.shipbar.hidden = !on;
+    if (!on) return;
+    this.el.hull.style.width = `${Math.max(0, Math.min(100, hull))}%`;
+    this.el.shipShield.style.width = `${Math.max(0, Math.min(100, shield / shieldMax * 100))}%`;
+    setText(this.el.hullValue, Math.ceil(Math.max(0, hull)));
+    setText(this.el.shipWeapon, weapon);
+    const m = this.shipEls.missiles, r = this.shipEls.roll, n = this.shipEls.nova;
+    m.classList.toggle('is-locked', missiles.locked);
+    m.style.setProperty('--cd', missiles.locked ? '0' : missiles.cd.toFixed(3));
+    m.classList.toggle('is-ready', !missiles.locked && missiles.cd <= 0);
+    r.style.setProperty('--cd', roll.toFixed(3)); r.classList.toggle('is-ready', roll <= 0);
+    n.style.setProperty('--charge', (charge * 100).toFixed(1)); n.classList.toggle('is-ready', charge >= 1);
+  }
+
+  /** Aim reticle at (x, y); `lead` is the lead pip position or null; `on` lights it when the guns are on it. */
+  setAim(aim) {
+    const el = this.el.aim;
+    el.hidden = !aim;
+    if (!aim) return;
+    el.style.transform = `translate(${aim.x.toFixed(1)}px, ${aim.y.toFixed(1)}px)`;
+    this.el.lead.hidden = !aim.lead;
+    if (aim.lead) {
+      this.el.lead.style.transform = `translate(${(aim.lead.x - aim.x).toFixed(1)}px, ${(aim.lead.y - aim.y).toFixed(1)}px)`;
+      this.el.lead.classList.toggle('is-on', Boolean(aim.lead.on));
+    }
+  }
+
+  /** Brackets: { id, x, y, size, hp (0..1), locked, boss, label, edge, angle (deg) } in CSS pixels. */
+  setTargets(items) {
+    const seen = new Set();
+    for (const t of items) {
+      seen.add(t.id);
+      let node = this.targetEls.get(t.id);
+      if (!node) {
+        node = document.createElement('div'); node.className = 'u-target'; node.innerHTML = '<i></i><small></small><em></em>';
+        this.el.targets.append(node); this.targetEls.set(t.id, node);
+      }
+      node.className = `u-target${t.edge ? ' is-edge' : ''}${t.locked ? ' is-locked' : ''}${t.boss ? ' is-boss' : ''}`;
+      node.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px)`;
+      if (t.edge) node.style.setProperty('--a', `${t.angle.toFixed(1)}deg`);
+      else { node.style.setProperty('--s', `${Math.round(t.size)}px`); node.style.setProperty('--hp', `${Math.round(Math.max(0, Math.min(1, t.hp)) * 100)}%`); }
+      setText(node.lastChild, t.label || '');
+    }
+    for (const [id, node] of this.targetEls) if (!seen.has(id)) { node.remove(); this.targetEls.delete(id); }
+  }
+
+  setTone(total, delta = 0) {
+    setText(this.el.tone, Math.max(0, Math.round(total)).toLocaleString());
+    if (delta > 0) {
+      const d = this.el.toneDelta;
+      setText(d, `+${Math.round(delta)}`); d.classList.remove('is-on'); void d.offsetWidth; d.classList.add('is-on');
+    }
+  }
+
+  /** Race clock: { time, detail, label } or null. */
+  setRace(race) {
+    this.el.race.hidden = !race;
+    if (!race) return;
+    setText(this.el.raceLabel, race.label || 'SLIPSTREAM CIRCUIT');
+    setText(this.el.raceTime, race.time);
+    setText(this.el.raceDetail, race.detail);
+  }
+
+  streak(count, label) {
+    const el = this.el.streak;
+    setText(this.el.streakCount, `×${count}`); setText(this.el.streakLabel, label);
+    el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(this.streakTimer);
+    this.streakTimer = setTimeout(() => { el.hidden = true; }, 1700);
+  }
+
+  /** A big centered moment: incursions, waves, laps. tone: '', 'coral', 'gold', 'violet'. */
+  banner(title, sub = '', tone = '', eyebrow = '') {
+    const el = this.el.banner;
+    el.className = `u-banner${tone ? ` is-${tone}` : ''}`;
+    setText(this.el.bannerEyebrow, eyebrow); this.el.bannerEyebrow.hidden = !eyebrow;
+    setText(this.el.bannerTitle, title); setText(this.el.bannerSub, sub);
+    el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(this.bannerTimer);
+    this.bannerTimer = setTimeout(() => { el.hidden = true; }, 3400);
   }
 
   popup(x, y, text, big = false) {
@@ -215,7 +308,7 @@ export class HUD {
 
   setControls(mode) {
     const html = mode === 'ship'
-      ? '<span><kbd>W</kbd><kbd>S</kbd> throttle</span><span><kbd>MOUSE</kbd> steer</span><span><kbd>A</kbd><kbd>D</kbd> turn</span><span><kbd>SHIFT</kbd> boost</span><span><kbd>E</kbd> land</span><span><kbd>M</kbd> travel</span>'
+      ? '<span><kbd>W</kbd><kbd>S</kbd> throttle</span><span><kbd>MOUSE</kbd> steer</span><span><kbd>SHIFT</kbd> boost</span><span><kbd>CLICK</kbd> fire</span><span><kbd>Q</kbd> roll</span><span><kbd>E</kbd> land</span><span><kbd>U</kbd> pedals</span><span><kbd>M</kbd> travel</span>'
       : '<span><kbd>WASD</kbd> move</span><span><kbd>SPACE</kbd> jump · hold to jetpack</span><span><kbd>SHIFT</kbd> sprint</span><span><kbd>E</kbd> interact</span><span><kbd>M</kbd> map</span><span><kbd>J</kbd> journal</span>';
     if (this.controlsMode !== mode) { this.controlsMode = mode; this.el.controls.innerHTML = html; }
   }

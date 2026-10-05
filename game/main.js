@@ -25,6 +25,7 @@ const provider = {
   get journal() { return journal; }, get settings() { return settings; }, get run() { return run; }, get board() { return board; },
   get ready() { return Boolean(game?.ready); }, get playing() { return Boolean(game?.playing); },
   get world() { return game?.worldId ?? null; }, get quality() { return game?.quality ?? detectQuality(settings.get('quality')); },
+  get medals() { return game?.slipstream?.medals ?? null; },
 };
 
 const panels = new Panels(provider, (type, detail = {}) => {
@@ -34,6 +35,14 @@ const panels = new Panels(provider, (type, detail = {}) => {
     case 'saveScore': saveRun(detail.name); break;
     case 'reset': journal.reset(); game?.onJournalReset(); hud.toast('Journal cleared. Every discovery is waiting again.'); break;
     case 'respawn': panels.close(); game?.respawn(); break;
+    case 'course': panels.close(); game?.course(detail.target); break;
+    case 'buyPedal': {
+      const level = journal.buyPedal(detail.pedal);
+      if (level) { game?.applyLoadout(); game?.sound.play('levelUp'); hud.setTone(journal.data.tone); panels.justEngaged = detail.pedal; }
+      else game?.sound.play('denied');
+      panels.render();
+      break;
+    }
     case 'panelOpened': game?.setPaused(true, detail.panel); break;
     case 'panelClosed': game?.setPaused(false, detail.panel); break;
     default: break;

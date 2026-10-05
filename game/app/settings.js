@@ -9,7 +9,7 @@ export const QUALITY = Object.freeze({
   low: { pixelRatio: 1.0, shadows: false, shadowSize: 512, post: 'low', terrain: 'low', flora: 'low' },
 });
 
-const DEFAULTS = Object.freeze({ sound: true, volume: 0.7, quality: 'auto', sensitivity: 1, invertY: false, reducedMotion: null, hints: true });
+const DEFAULTS = Object.freeze({ sound: true, volume: 0.7, quality: 'auto', sensitivity: 1, invertY: false, reducedMotion: null, hints: true, patrols: true });
 
 export class Settings {
   constructor(storage = globalThis.localStorage) {

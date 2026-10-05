@@ -60,8 +60,14 @@ export class Ship {
     this.speed = 0; this.throttle = 0;
     this.state = 'landed'; // landed | takeoff | flying | landing | autopilot
     this.boost = false; this.pulse = false;
+    this.surge = 0; // slipstream speed above the cap, decaying
+    this.roll = null; this.rollCooldown = 0;
     this.anim = null;
     this.colliderIds = [];
+    // A shield bubble that flashes when hits land.
+    this.bubble = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: '#8cf0d1', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    this.bubble.scale.set(8, 4.6, 10); this.bubble.position.y = 2.2; this.bubble.visible = false; this.shieldFlash = 0;
+    this.object.add(this.bubble);
     this.#setGear(1);
   }
 
@@ -96,6 +102,34 @@ export class Ship {
     this.colliderWorld = world;
   }
   unregisterColliders(world = this.colliderWorld) { for (const id of this.colliderIds) world?.remove(id); this.colliderIds = []; }
+
+  /** Puts the ship straight into flight at `position`, facing `forward` (respawns, autopilot arrivals). */
+  launchAt(position, forward, up = new THREE.Vector3(0, 1, 0), speed = 120) {
+    const f = forward.clone().normalize(), u = up.clone().addScaledVector(f, -up.dot(f));
+    if (u.lengthSq() < 1e-6) u.set(1, 0, 0).addScaledVector(f, -f.x);
+    u.normalize();
+    const right = new THREE.Vector3().crossVectors(f, u).normalize();
+    this.object.quaternion.setFromRotationMatrix(_m.makeBasis(right, u, f.clone().negate()));
+    this.object.position.copy(position);
+    this.state = 'flying'; this.anim = null; this.roll = null; this.surge = 0;
+    this.speed = speed; this.velocity.copy(f).multiplyScalar(speed);
+    this.gear = this.gearTarget = 0; this.#setGear(0);
+    this.object.updateMatrixWorld(true);
+  }
+
+  /** Slipstream: speed past the cap that bleeds off over a second or two. */
+  addSurge(amount) { this.surge = Math.max(this.surge, amount); this.speed += amount * 0.7; }
+
+  /** An evasive barrel roll: a quick sidestep that dodges fire. @returns {boolean} */
+  barrelRoll(dir = 1) {
+    if (this.state !== 'flying' || this.rollCooldown > 0) return false;
+    this.roll = { t: 0, duration: 0.6, dir, angle: 0 };
+    this.rollCooldown = 1.9;
+    this.velocity.addScaledVector(_v.set(dir, 0, 0).applyQuaternion(this.object.quaternion), 150);
+    return true;
+  }
+  get evading() { return Boolean(this.roll); }
+  flashShield(strength = 1) { this.shieldFlash = Math.max(this.shieldFlash, strength); }
 
   forward(out = new THREE.Vector3()) { return out.set(0, 0, -1).applyQuaternion(this.object.quaternion); }
   up(out = new THREE.Vector3()) { return out.set(0, 1, 0).applyQuaternion(this.object.quaternion); }
@@ -134,9 +168,12 @@ export class Ship {
    * @param {object} env { radialUp, altitude, inAtmosphere (0-1), groundRadiusAt(dir), planet, nearestDistance }
    */
   update(dt, input, env) {
-    this.mixer.update(0);
     // Gear easing.
     if (Math.abs(this.gear - this.gearTarget) > 1e-3) { this.gear += Math.sign(this.gearTarget - this.gear) * Math.min(Math.abs(this.gearTarget - this.gear), dt * 1.3); this.#setGear(this.gear); }
+    this.shieldFlash = Math.max(0, this.shieldFlash - dt * 3);
+    this.bubble.visible = this.shieldFlash > 0.01; this.bubble.material.opacity = this.shieldFlash * 0.08;
+    this.rollCooldown = Math.max(0, this.rollCooldown - dt);
+    this.surge = Math.max(0, this.surge - dt * (180 + this.surge * 0.6));
     if (this.state === 'landed') { this.#flames(0, false); return; }
     if (this.state === 'takeoff') {
       const a = this.anim; a.t += dt; const k = Math.min(1, a.t / a.duration), e = k * k * (3 - 2 * k);
@@ -165,8 +202,15 @@ export class Ship {
     const yaw = THREE.MathUtils.clamp(input.yaw * FLIGHT.yawRate * dt - input.mouse.x * FLIGHT.mouseRate * 0.85, -0.09, 0.09);
     const roll = input.roll * FLIGHT.rollRate * dt + yaw * 0.6;
     q.multiply(_q.setFromAxisAngle(_v.set(1, 0, 0), pitch)).multiply(_q.setFromAxisAngle(_v.set(0, 1, 0), yaw)).multiply(_q.setFromAxisAngle(_v.set(0, 0, 1), roll)).normalize();
+    if (this.roll) { // a full turn about the nose, eased in and out
+      const r = this.roll; r.t += dt;
+      const k = Math.min(1, r.t / r.duration), angle = k * k * (3 - 2 * k) * Math.PI * 2 * r.dir;
+      q.multiply(_q.setFromAxisAngle(_v.set(0, 0, 1), -(angle - r.angle))).normalize();
+      r.angle = angle;
+      if (k >= 1) this.roll = null;
+    }
     // Auto-level roll near planets (keeps the horizon calm for non-pilots).
-    if (env.radialUp && env.inAtmosphere > 0.05 && Math.abs(input.roll) < 0.1) {
+    if (env.radialUp && env.inAtmosphere > 0.05 && Math.abs(input.roll) < 0.1 && !this.roll) {
       const fwd = this.forward(_v), shipUp = this.up(_w);
       const desired = env.radialUp.clone().addScaledVector(fwd, -env.radialUp.dot(fwd));
       if (desired.lengthSq() > 1e-3) {
@@ -175,12 +219,14 @@ export class Ship {
         q.premultiply(_q.setFromAxisAngle(fwd, angle * (1 - Math.exp(-dt * 2.2 * env.inAtmosphere)))).normalize();
       }
     }
-    // Throttle and speed caps (pulse drive only in open space).
-    const atmo = env.inAtmosphere ?? 0;
+    // Throttle and speed caps (pulse drive only in open space). `env.limits`
+    // tightens them where speed would spoil the fun: rifts, races.
+    const atmo = env.inAtmosphere ?? 0, limits = env.limits || {}, boostScale = limits.boostScale ?? 1;
     const far = (env.nearestDistance ?? Infinity) > 4000;
     this.boost = input.boost && !this.pulse;
-    this.pulse = input.boost && atmo < 0.02 && far;
-    const cap = this.pulse ? FLIGHT.pulseMax : THREE.MathUtils.lerp(input.boost ? FLIGHT.spaceMax * 1.6 : FLIGHT.spaceMax, input.boost ? FLIGHT.atmoBoost : FLIGHT.atmoMax, atmo);
+    this.pulse = input.boost && atmo < 0.02 && far && limits.pulse !== false;
+    const spaceMax = limits.max ?? FLIGHT.spaceMax, spaceBoost = limits.boost ?? FLIGHT.spaceMax * 1.6 * boostScale;
+    const cap = (this.pulse ? FLIGHT.pulseMax : THREE.MathUtils.lerp(input.boost ? spaceBoost : spaceMax, input.boost ? FLIGHT.atmoBoost * boostScale : FLIGHT.atmoMax, atmo)) + this.surge;
     if (input.throttleUp || input.boost) this.speed = Math.min(cap, this.speed + (this.pulse ? FLIGHT.pulseAccel : input.boost ? FLIGHT.boostAccel : FLIGHT.accel) * dt);
     else if (input.throttleDown) this.speed = Math.max(-30, this.speed - FLIGHT.brake * dt);
     if (this.speed > cap) this.speed = THREE.MathUtils.damp(this.speed, cap, 1.8, dt);
@@ -223,6 +269,7 @@ export class Ship {
     this.#bezier(a, e, this.object.position);
     const vel = this.object.position.clone().sub(prev);
     this.speed = vel.length() / Math.max(dt, 1e-3);
+    this.velocity.copy(vel).divideScalar(Math.max(dt, 1e-3));
     if (vel.lengthSq() > 1e-6) {
       const fwd = vel.clone().normalize(), up = env.radialUp && k > 0.7 ? env.radialUp : this.up(_w);
       _m.lookAt(new THREE.Vector3(), fwd, up); // matrix lookAt: -Z toward target (game forward)

@@ -6,10 +6,11 @@ import { getGlowTexture } from '../world/space.js';
  * Everything is additive so it reads well against bright skies and at night.
  */
 export class FX {
-  constructor(scene, { reducedMotion = false } = {}) {
+  /** `scale` sizes the sparks: 1 on foot, larger for ship-scale fights in space. */
+  constructor(scene, { reducedMotion = false, scale = 1 } = {}) {
     this.scene = scene; this.reducedMotion = reducedMotion;
     this.group = new THREE.Group(); this.group.name = 'fx'; scene.add(this.group);
-    this.sparkGeo = new THREE.OctahedronGeometry(0.09, 0);
+    this.sparkGeo = new THREE.OctahedronGeometry(0.09 * scale, 0);
     this.ringGeo = new THREE.TorusGeometry(1, 0.035, 6, 72);
     this.discGeo = new THREE.RingGeometry(0.7, 1, 64);
     this.materials = new Map();

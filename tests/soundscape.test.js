@@ -285,7 +285,7 @@ test('every SFX name plays without throwing, including odd options', () => {
   const { ctx, sound } = makeSoundscape();
   sound.setScene({ world: 'experience' });
   sound.setEnabled(true);
-  assert.equal(SFX_NAMES.length, 27);
+  assert.equal(SFX_NAMES.length, 29);
   for (const name of SFX_NAMES) {
     const voice = sound.play(name, name === 'notePad' ? { pitch: 40 } : {});
     assert.ok(voice, `${name} should create a voice`);

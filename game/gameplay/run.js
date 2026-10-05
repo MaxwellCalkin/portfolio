@@ -7,9 +7,10 @@ import { levelForXP, weaponForXP } from '../model.js';
  *   xp    = kills * 40  + wardens * 160 + crystals * 5
  *   score = kills * 110 + wardens * 790 + crystals * 20
  * "Crystals" are the scoring unit for everything that is not a fight:
- * discoveries, resonance shards and the Experience mini-games.
+ * discoveries, resonance shards, the Experience mini-games, slipstream
+ * gates, circuit laps and cleared rifts. Space kills count as kills.
  */
-export const CRYSTALS = Object.freeze({ discovery: 6, archive: 10, shard: 4, arena: 12, groove: 6, world: 5 });
+export const CRYSTALS = Object.freeze({ discovery: 6, archive: 10, shard: 4, arena: 12, groove: 6, world: 5, gate: 1, lap: 12, rift: 15, flagship: 30 });
 /** The flight log accepts runs of up to a day (leaderboard-core.js validateRun). */
 export const MAX_DURATION = 86_400;
 

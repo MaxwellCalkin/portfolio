@@ -1,4 +1,5 @@
 import { CONTENT, PROJECTS, ESSAYS } from '../content.js';
+import { levelOf, nextCost } from '../space/pedals.js';
 
 /**
  * Discoveries: the portfolio, scattered across the worlds as places.
@@ -80,13 +81,16 @@ export function discoveryFor(world, landmark, poi) {
 
 const STORAGE_KEY = 'unfolding-journal-v2';
 
-/** The visitor's journal: discovered ids, shards, wardens, records. */
+/** The visitor's journal: discovered ids, shards, wardens, records, and the ship's Tone and pedals. */
 export class Journal {
   constructor(storage = globalThis.localStorage) {
     this.storage = storage;
-    this.data = { discovered: [], shards: [], wardens: [], arenaBest: null, riff: false, visited: [] };
+    this.data = { discovered: [], shards: [], wardens: [], arenaBest: null, riff: false, visited: [], tone: 0, pedals: {}, rifts: {}, circuitBest: null, medals: [] };
     try { const raw = storage?.getItem(STORAGE_KEY); if (raw) Object.assign(this.data, JSON.parse(raw)); } catch { /* storage unavailable */ }
-    for (const key of ['discovered', 'shards', 'wardens', 'visited']) if (!Array.isArray(this.data[key])) this.data[key] = [];
+    for (const key of ['discovered', 'shards', 'wardens', 'visited', 'medals']) if (!Array.isArray(this.data[key])) this.data[key] = [];
+    for (const key of ['pedals', 'rifts']) if (!this.data[key] || typeof this.data[key] !== 'object' || Array.isArray(this.data[key])) this.data[key] = {};
+    if (!Number.isFinite(this.data.tone) || this.data.tone < 0) this.data.tone = 0;
+    if (!Number.isFinite(this.data.circuitBest) || this.data.circuitBest <= 0) this.data.circuitBest = null;
   }
   save() { try { this.storage?.setItem(STORAGE_KEY, JSON.stringify(this.data)); return true; } catch { return false; } }
   has(id) { return this.data.discovered.includes(id); }
@@ -101,5 +105,47 @@ export class Journal {
     return { found, total: list.length };
   }
   get complete() { return DISCOVERIES.every(d => this.has(d.id)); }
-  reset() { this.data = { discovered: [], shards: [], wardens: [], arenaBest: this.data.arenaBest, riff: this.data.riff, visited: [] }; this.save(); }
+
+  /* ------------------------------------------------------- the Aster */
+  /** @returns {number} the new Tone balance */
+  addTone(amount) {
+    this.data.tone = Math.max(0, Math.round(this.data.tone + (Number(amount) || 0)));
+    this.save();
+    return this.data.tone;
+  }
+  /** Engages the next level of a pedal. @returns {number|null} the new level, or null if it can't be bought */
+  buyPedal(id) {
+    const cost = nextCost(this.data.pedals, id);
+    if (cost === null || this.data.tone < cost) return null;
+    const level = levelOf(this.data.pedals, id) + 1;
+    this.data.tone -= cost;
+    this.data.pedals = { ...this.data.pedals, [id]: level };
+    this.save();
+    return level;
+  }
+  /** Pedals that are earned, not bought (Reverb). @returns {boolean} true if newly earned */
+  earnPedal(id) {
+    if (levelOf(this.data.pedals, id) >= 1) return false;
+    this.data.pedals = { ...this.data.pedals, [id]: 1 };
+    this.save();
+    return true;
+  }
+  riftClears(id) { return Math.max(0, Math.floor(Number(this.data.rifts[id]) || 0)); }
+  /** @returns {number} how many times the rift has now been cleared */
+  clearRift(id) { const clears = this.riftClears(id) + 1; this.data.rifts = { ...this.data.rifts, [id]: clears }; this.save(); return clears; }
+  /** @returns {boolean} true for a new best lap */
+  recordLap(seconds) {
+    if (this.data.circuitBest !== null && seconds >= this.data.circuitBest) return false;
+    this.data.circuitBest = seconds; this.save();
+    return true;
+  }
+  /** @returns {boolean} true the first time a medal is won */
+  addMedal(medal) { if (this.data.medals.includes(medal)) return false; this.data.medals.push(medal); this.save(); return true; }
+
+  /** Clears discoveries; records, the Aster's Tone and pedals stay. */
+  reset() {
+    const { arenaBest, riff, tone, pedals, rifts, circuitBest, medals } = this.data;
+    this.data = { discovered: [], shards: [], wardens: [], arenaBest, riff, visited: [], tone, pedals, rifts, circuitBest, medals };
+    this.save();
+  }
 }

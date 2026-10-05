@@ -40,7 +40,7 @@
         <p class="launch-dek">A mind to explore.<br>A better world to build.</p>
         <p class="launch-subtitle">Software engineer. Alignment-minded builder.<br>In service of what is genuinely life-giving.</p>
         <div class="featured-projects"><span>FEATURED PROJECTS</span><a href="https://beacn.space" target="_blank" rel="noopener noreferrer">BEACN <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a><a href="https://heard-us.vercel.app" target="_blank" rel="noopener noreferrer">Heard Us <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a></div><div class="launch-actions"><button class="button button-primary" id="launch-button" disabled><span id="launch-button-text">Initializing universe</span><span class="button-orbit" aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></button><a class="read-link" href="./portfolio.html">Read the portfolio <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M3 3h10v10"/></svg></span></a></div>
-        <p class="launch-note" id="launch-note">Five worlds. Thirty-seven discoveries. Go at your own pace.</p>
+        <p class="launch-note" id="launch-note">Five worlds. Thirty-seven discoveries. Static rifts and a slipstream circuit in the space between. Go at your own pace.</p>
       </div>
     </main>
 
@@ -71,6 +71,22 @@
         <div class="u-ability" data-ability="pulse"><kbd>C</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M6.5 7.5a7.5 7.5 0 0 0 0 9M17.5 7.5a7.5 7.5 0 0 1 0 9M3.5 4.5a12 12 0 0 0 0 15M20.5 4.5a12 12 0 0 1 0 15"/></svg></span><small>Low End</small><i class="u-cooldown"></i></div>
         <div class="u-ability u-ultimate" data-ability="drop"><kbd>X</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></span><small>The Drop</small><i class="u-charge" id="u-ult-charge"></i><b id="u-ult-value">0%</b></div>
         <div class="u-weapon"><small>RIFLE</small><strong id="u-weapon">PULSE I</strong></div>
+      </section>
+      <div class="u-targets" id="u-targets"></div>
+      <div class="u-aim" id="u-aim" hidden><i></i><b id="u-lead" hidden></b></div>
+      <span class="u-tone" id="u-tone" title="Tone engages the Aster's pedals (press U)"><b id="u-tone-value">0</b> TONE <i id="u-tone-delta"></i></span>
+      <section class="u-race" id="u-race" hidden><span class="tiny" id="u-race-label">SLIPSTREAM CIRCUIT</span><strong id="u-race-time">0.0s</strong><span id="u-race-detail">GATE 1 / 16</span></section>
+      <div class="u-streak" id="u-streak" hidden><strong id="u-streak-count">×2</strong><span id="u-streak-label">DOUBLE STOP</span></div>
+      <section class="u-banner" id="u-banner" hidden><span class="tiny" id="u-banner-eyebrow"></span><strong id="u-banner-title"></strong><span id="u-banner-sub"></span></section>
+      <section class="u-shipbar" id="u-shipbar" hidden>
+        <span class="u-agent"><b>THE ASTER</b> // <span id="u-ship-weapon">CANNONS</span></span>
+        <span class="u-bar u-health"><i id="u-hull"></i><small id="u-hull-value">100</small></span>
+        <span class="u-bar u-shield"><i id="u-ship-shield"></i></span>
+        <div class="u-ship-moves">
+          <div class="u-ability" data-ship="missiles"><kbd>RMB</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M5 19 17 7M12 7h5v5M4 14l6 6"/></svg></span><small>Harmonics</small><i class="u-cooldown"></i></div>
+          <div class="u-ability" data-ship="roll"><kbd>Q</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></span><small>Roll</small><i class="u-cooldown"></i></div>
+          <div class="u-ability u-ultimate" data-ship="nova"><kbd>X</kbd><span class="u-ability-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></span><small>The Drop</small><i class="u-charge"></i></div>
+        </div>
       </section>
       <aside class="u-card" id="u-card" hidden aria-live="polite">
         <span class="tiny" id="u-card-eyebrow">DISCOVERY</span>

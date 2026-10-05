@@ -9,6 +9,7 @@ export const SPACE_SCALE = { sky: 420000, stars: 380000, sunDistance: 300000 };
 let glowTexture = null;
 export function getGlowTexture() {
   if (glowTexture) return glowTexture;
+  if (typeof document === 'undefined') return null; // unit tests (no canvas): glows render as plain sprites
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d'), gradient = g.createRadialGradient(128, 128, 0, 128, 128, 128);
   gradient.addColorStop(0, 'rgba(255,255,255,1)'); gradient.addColorStop(0.08, 'rgba(255,255,255,0.9)');
