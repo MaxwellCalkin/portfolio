@@ -84,7 +84,9 @@ export class Panels {
     if (!CONTENT[id] && !PANEL_IDS.includes(id)) return;
     if (!this.dialog.open) this.returnFocus = document.activeElement;
     this.active = id;
-    this.dialog.dataset.panel = id;
+    // Not `data-panel`: that marks "open this panel" controls, and the click
+    // handler would treat every click inside the dialog as one.
+    this.dialog.dataset.view = id;
     this.render();
     this.dialog.scrollTop = 0;
     if (!this.dialog.open) {
@@ -103,6 +105,9 @@ export class Panels {
     const id = this.active; if (!id) return;
     const html = CONTENT[id] ? this.#chapter(id) : this[`_${id}`]();
     this.content.innerHTML = html;
+    // Essays and project links open in a new tab, as they do from the journal
+    // and the discovery cards, so the game stays where you left it.
+    for (const a of this.content.querySelectorAll('a[href^="http"]:not([target])')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
     if (id === 'scores') this.renderScores(true);
   }
 

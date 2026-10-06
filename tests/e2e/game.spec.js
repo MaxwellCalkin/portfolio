@@ -51,6 +51,25 @@ test('launch, read the Origin, travel and use the panels without errors', async 
   expect(errors).toEqual([]);
 });
 
+test('links and settings inside panels respond to clicks', async ({ page, context }) => {
+  await page.goto(GAME);
+  await page.getByRole('link', { name: 'Philosophy' }).click();
+  await expect(page.locator('#dialog-title')).toContainText('A constitution');
+  // Essays open in a new tab (stubbed so the test stays offline), and the chapter stays put.
+  await context.route('https://maxwellcalkin.netlify.app/essays/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Essay</title>' }));
+  await page.locator('#portfolio-dialog').evaluate(d => { d.scrollTop = 500; });
+  const [essay] = await Promise.all([context.waitForEvent('page'), page.locator('#portfolio-dialog a.reading-link').first().click()]);
+  await essay.waitForLoadState();
+  expect(essay.url()).toContain('/essays/the-unfolding');
+  await essay.close();
+  expect(await page.locator('#portfolio-dialog').evaluate(d => d.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Open settings and controls' }).click();
+  const reduced = page.locator('#setting-reducedMotion');
+  await reduced.check(); // fails if the click is swallowed
+  await expect(reduced).toBeChecked();
+});
+
 test('the journal remembers discoveries across visits', async ({ page }) => {
   await page.goto(GAME);
   await page.evaluate(() => localStorage.setItem('unfolding-journal-v2', JSON.stringify({ discovered: ['philosophy:origin', 'contact:signal'], shards: [], wardens: [], visited: [] })));
