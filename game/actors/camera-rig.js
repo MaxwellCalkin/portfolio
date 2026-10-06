@@ -24,6 +24,7 @@ export class CameraRig {
     this.shake = 0;
     this.baseFov = 62;
     this.reducedMotion = false;
+    this.offset = new THREE.Vector3(); this.anchored = false; // ship follow: camera position relative to the ship
   }
 
   setMode(mode, duration = 0.9) {
@@ -88,7 +89,7 @@ export class CameraRig {
     const target = ship.object.position.clone().addScaledVector(fwd, -back).addScaledVector(camUp, lift);
     const look = ship.object.position.clone().addScaledVector(fwd, 30).addScaledVector(camUp, 1.5);
     const fov = this.baseFov + Math.min(16, speed / 40) + (o.boost ? 6 : 0);
-    this.#apply(dt, target, look, camUp, fov, 10);
+    this.#apply(dt, target, look, camUp, fov, 10, ship.object.position);
   }
 
   /** Slow orbit around a point (launch screen / photo mode). */
@@ -100,7 +101,13 @@ export class CameraRig {
     this.#apply(dt, pos, look, up, this.baseFov, 3);
   }
 
-  #apply(dt, position, look, up, fov, followRate = 18) {
+  /**
+   * `anchor` (the ship) makes the follow happen in the anchor's frame: the
+   * camera then trails only when the view turns, never because the anchor is
+   * fast. Smoothing world positions trails a fast ship by speed / followRate,
+   * which crossed the teleport snap below every few frames above ~200 m/s.
+   */
+  #apply(dt, position, look, up, fov, followRate = 18, anchor = null) {
     _m.lookAt(position, look, up);
     const quat = new THREE.Quaternion().setFromRotationMatrix(_m);
     if (this.blend < 1) {
@@ -108,7 +115,19 @@ export class CameraRig {
       const t = this.blend * this.blend * (3 - 2 * this.blend);
       this.position.copy(this.fromPos).lerp(position, t);
       this.quaternion.copy(this.fromQuat).slerp(quat, t);
+      // Keep the offset current, so the follow picks up exactly where the blend ends.
+      if (anchor) this.offset.copy(this.position).sub(anchor);
+      this.anchored = Boolean(anchor);
+    } else if (anchor) {
+      const want = _c.copy(position).sub(anchor);
+      if (!this.anchored) { this.offset.copy(this.position).sub(anchor); this.anchored = true; }
+      // Cut (rather than swing through the ship) when the view flips, e.g. a respawn facing a new way.
+      if (this.offset.distanceToSquared(want) > 45 * 45) this.offset.copy(want);
+      else this.offset.lerp(want, 1 - Math.exp(-followRate * dt));
+      this.position.copy(anchor).add(this.offset);
+      this.quaternion.copy(quat);
     } else {
+      this.anchored = false;
       // Exponential follow for position; rotation snaps (aim must be crisp).
       const k = 1 - Math.exp(-followRate * dt);
       if (this.position.distanceToSquared(position) > 400) this.position.copy(position); else this.position.lerp(position, k);
